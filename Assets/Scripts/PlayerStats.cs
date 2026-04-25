@@ -24,10 +24,17 @@ public class PlayerStats : MonoBehaviour
     public int burnTurns = 0;
     public int corrosionTurns = 0;
     public int frostTurns = 0;
+    public int bleedTurns = 0;
 
     // New fields for Neutral card effects
     public int extraDrawsNextTurn = 0;
     public int extraManaNextTurn = 0;
+
+    // Delayed healing (光明祈愿)
+    public int delayedHealNextTurn = 0;
+
+    // Nature Guard passive (自然守护)
+    public bool natureGuardActive = false;
 
     [Header("单例模式")]
     public static PlayerStats Instance;
@@ -76,6 +83,9 @@ public class PlayerStats : MonoBehaviour
         burnTurns = 0;
         corrosionTurns = 0;
         frostTurns = 0;
+        bleedTurns = 0;
+        delayedHealNextTurn = 0;
+        natureGuardActive = false;
     }
 
     public void StartTurn()
@@ -83,6 +93,7 @@ public class PlayerStats : MonoBehaviour
         damageSourcesThisTurn.Clear();
         hasFlameShield = false; // Reset Flame Shield
         isUntargetable = false;
+        natureGuardActive = false; // Reset Nature Guard
 
         // --- Handle Self Debuffs ---
         if (burnTurns > 0)
@@ -102,6 +113,20 @@ public class PlayerStats : MonoBehaviour
             TakeDamage(5, null); // Ice damage
             Debug.Log("Frost Damage: 5");
             frostTurns--;
+        }
+        if (bleedTurns > 0)
+        {
+            TakeDamage(10, null); // Shadow damage
+            Debug.Log("Bleed Damage: 10");
+            bleedTurns--;
+        }
+
+        // Delayed Heal (光明祈愿)
+        if (delayedHealNextTurn > 0)
+        {
+            Heal(delayedHealNextTurn);
+            Debug.Log($"Delayed Heal: {delayedHealNextTurn} HP");
+            delayedHealNextTurn = 0;
         }
         
         // Apply Next Turn Effects
@@ -203,9 +228,20 @@ public class PlayerStats : MonoBehaviour
              if (enemy != null)
              {
                  // Apply Burn: "令伤害来源获得[烧伤]" -> Default 2 turns
-                 enemy.ApplyStatus(StatusType.Burn, 2); 
+                 enemy.ApplyStatus(StatusType.Burn, 2);
                  Debug.Log("Flame Shield triggered: Burn applied to attacker!");
              }
+        }
+
+        // Nature Guard Logic (自然守护: 本回合内敌人对你造成伤害时，其受到10点生机伤害)
+        if (natureGuardActive && source != null)
+        {
+            var enemy = source.GetComponent<Enemy>();
+            if (enemy != null)
+            {
+                enemy.TakeDamage(10, DamageType.Nature);
+                Debug.Log("Nature Guard triggered: 10 Nature damage to attacker!");
+            }
         }
 
         if (damageReductionNextHit > 0)
@@ -247,7 +283,8 @@ public class PlayerStats : MonoBehaviour
         burnTurns = 0;
         corrosionTurns = 0;
         frostTurns = 0;
-        
+        bleedTurns = 0;
+
         Debug.Log("Player Cleansed!");
     }
 

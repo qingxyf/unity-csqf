@@ -158,8 +158,14 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void ApplyStatus(StatusType type, int duration, int value = 0)
     {
-        // Purified check? Description says "无法触发额外效果" (Cannot trigger extra effects). 
-        // Maybe it prevents applying positive buffs? Assuming it's a debuff on enemy.
+        // Purified: 无法触发额外效果 (cannot have additional effects applied)
+        // Only allow Purified itself to be applied; block all other new statuses
+        if (activeStatuses.ContainsKey(StatusType.Purified) && type != StatusType.Purified)
+        {
+            ShowFloatingText("Purified! Blocked!", Color.white);
+            Debug.Log($"{enemyName}: {type} blocked by Purified.");
+            return;
+        }
         
         if (activeStatuses.ContainsKey(type))
         {
@@ -191,20 +197,18 @@ public class Enemy : MonoBehaviour, IDamageable
                 case StatusType.Corrosion: // Start of turn: 10 shadow damage
                     TakeDamage(10, DamageType.Shadow);
                     break;
-                case StatusType.Frost: // Start of turn: 5 ice damage, 20% freeze
+                case StatusType.Frost: // Start of turn: 5 ice damage
                     TakeDamage(5, DamageType.Ice);
-                    if (Random.value < 0.2f)
-                    {
-                        ApplyStatus(StatusType.Freeze, 1);
-                        ShowFloatingText("Frozen!", Color.cyan);
-                    }
                     break;
                 case StatusType.Poison: // Start of turn: Lose 10% current HP (max 30)
                     int poisonDmg = Mathf.Min(30, Mathf.FloorToInt(currentHealth * 0.1f));
                     TakeDamage(poisonDmg, DamageType.Nature);
                     break;
-                case StatusType.Bleed: // Start of turn: 10 damage
-                    TakeDamage(10, DamageType.Physical);
+                case StatusType.Freeze: // Start of turn: 5 ice damage + cannot act
+                    TakeDamage(5, DamageType.Ice);
+                    break;
+                case StatusType.Bleed: // Start of turn: 10 shadow damage
+                    TakeDamage(10, DamageType.Shadow);
                     break;
             }
 
@@ -270,15 +274,13 @@ public class Enemy : MonoBehaviour, IDamageable
 
         int dmg = GetAttackDamage();
 
-        // Confused: 50% chance to hit self
+        // Confused: attack self
         if (activeStatuses.ContainsKey(StatusType.Confused))
         {
-            if (Random.value < 0.5f)
-            {
-                TakeDamage(dmg, DamageType.Physical);
-                ShowFloatingText("Confused Hit Self!", Color.yellow);
-                return;
-            }
+            TakeDamage(dmg, DamageType.Physical);
+            ShowFloatingText("Confused Hit Self!", Color.yellow);
+            activeStatuses.Remove(StatusType.Confused); // 下次攻击时触发，消耗掉
+            return;
         }
 
         if (PlayerStats.Instance != null)

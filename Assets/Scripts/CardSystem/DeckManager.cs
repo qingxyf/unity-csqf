@@ -289,13 +289,13 @@ public class DeckManager : MonoBehaviour
 
     public void OnEnemyDied()
     {
-        // Logic for "安营扎寨" (Set Up Camp): Returns to hand on enemy death
+        // Logic for "安营扎寨" (Set Up Camp): 一名敌人死亡时加入牌堆顶（限一次）
         var campCard = exhaustPile.Find(c => c.cardName == "安营扎寨");
         if (campCard != null)
         {
             exhaustPile.Remove(campCard);
-            hand.Add(campCard); // Return to hand
-            Debug.Log("Set Up Camp returned to hand on enemy death.");
+            drawPile.Insert(0, campCard); // 加入牌堆顶
+            Debug.Log("安营扎寨: Enemy died, card added to top of draw pile.");
         }
     }
 

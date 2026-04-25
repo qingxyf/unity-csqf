@@ -17,9 +17,6 @@ public class CardEffectManager : MonoBehaviour
 
     // "未完成之咒" (Unfinished Curse) flag
     public bool nextCardDoubleEffect = false;
-    
-    // "安营扎寨" flag
-    public bool campReturnToDeckActive = false;
 
     private void Awake()
     {
@@ -35,8 +32,8 @@ public class CardEffectManager : MonoBehaviour
             PlayerStats.Instance.StartTurn();
         }
         
-        // Reset Camp Flag
-        campReturnToDeckActive = false;
+        // Reset turn-based flags
+        // (reserved for future use)
 
         // Volcano Logic: 3 stacks to trigger
         if (volcanoStacks > 0)
@@ -76,19 +73,7 @@ public class CardEffectManager : MonoBehaviour
 
     public void OnEnemyKilled()
     {
-        if (campReturnToDeckActive)
-        {
-            if (DeckManager.Instance != null)
-            {
-                // Create "安营扎寨" card data and add to deck top
-                // Assuming we can find the card or create it.
-                // For now, let's just Log it as we might not have a reference to the card asset easily.
-                // Or use DeckManager to add by name if supported.
-                Debug.Log("安营扎寨: Enemy died, adding card to deck top (Not Implemented fully yet)");
-                // DeckManager.Instance.AddCardToTop("安营扎寨"); 
-            }
-            campReturnToDeckActive = false; // Limit 1
-        }
+        // 安营扎寨 logic is handled by DeckManager.OnEnemyDied()
     }
 
     public void PlayCard(CardData card, GameObject target)
@@ -142,8 +127,8 @@ public class CardEffectManager : MonoBehaviour
                     {
                         enemy.ApplyStatus(StatusType.Purified, 1);
                     }
-                    player.Heal(25); 
-                    Debug.Log("Note: '光明祈愿' healing applied immediately for simplicity.");
+                    player.delayedHealNextTurn += 25;
+                    Debug.Log("光明祈愿: 下回合开始时回复25HP");
                     break;
 
                 case "魔法闪耀":
@@ -271,17 +256,7 @@ public class CardEffectManager : MonoBehaviour
 
                 case "自然守护":
                     player.Heal(40);
-                    foreach (var source in player.damageSourcesThisTurn)
-                    {
-                        if (source != null)
-                        {
-                            var enemy = source.GetComponent<Enemy>();
-                            if (enemy != null)
-                            {
-                                enemy.TakeDamage(10, DamageType.Nature);
-                            }
-                        }
-                    }
+                    player.natureGuardActive = true;
                     break;
 
                 case "寄生种子":
@@ -299,14 +274,6 @@ public class CardEffectManager : MonoBehaviour
                     }
                     break;
 
-                case "棘藤棒":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(50, DamageType.Nature);
-                        player.regenerationTurns += 1;
-                    }
-                    break;
-                
                 case "无声润物":
                     player.SetHealth(100);
                     player.Cleanse();
@@ -316,7 +283,7 @@ public class CardEffectManager : MonoBehaviour
                 case "冰霜箭":
                     if (targetEnemy != null)
                     {
-                        targetEnemy.TakeDamage(30, DamageType.Ice);
+                        targetEnemy.TakeDamage(20, DamageType.Ice);
                         targetEnemy.ApplyStatus(StatusType.Frost, 2); 
                     }
                     break;
@@ -330,7 +297,7 @@ public class CardEffectManager : MonoBehaviour
                     if (targetEnemy != null)
                     {
                         int hpBefore = targetEnemy.GetCurrentHealth();
-                        targetEnemy.TakeDamage(55, DamageType.Ice);
+                        targetEnemy.TakeDamage(50, DamageType.Ice);
                         if (targetEnemy.IsDead() || (hpBefore > 0 && targetEnemy.GetCurrentHealth() <= 0))
                         {
                             player.RestoreMana(40);
@@ -359,7 +326,6 @@ public class CardEffectManager : MonoBehaviour
                     {
                         enemy.ApplyStatus(StatusType.Freeze, 1);
                     }
-                    player.DrawCards(1);
                     break;
 
                 case "霜涛覆岭":
@@ -396,7 +362,8 @@ public class CardEffectManager : MonoBehaviour
 
                 case "影月庇护":
                     player.isUntargetable = true;
-                    player.TakeDamage(10, player.gameObject); 
+                    player.bleedTurns = 2;
+                    Debug.Log("影月庇护: 本回合无法被选定，自身获得[流血]");
                     break;
 
                 case "未完成之咒":
@@ -451,7 +418,6 @@ public class CardEffectManager : MonoBehaviour
                         DeckManager.Instance.DrawCardInCombat(1);
                     }
                     player.Heal(20);
-                    campReturnToDeckActive = true;
                     OnPlayerTurnEnd();
                     break;
 
