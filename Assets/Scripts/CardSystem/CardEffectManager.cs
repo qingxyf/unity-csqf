@@ -6,17 +6,16 @@ public class CardEffectManager : MonoBehaviour
     public static CardEffectManager Instance;
 
     [Header("Runtime Data")]
-    // Tracks usage count for "二重吟唱" (Double Chant)
     public int doubleChantUseCount = 0;
-    
-    // Tracks if "照耀的荣光" (Shining Glory) reduced damage applies
     public int shiningGloryDamageReduction = 0;
-
-    // Tracks "火山" (Volcano) stacks
-    public int volcanoStacks = 0;
-
-    // "未完成之咒" (Unfinished Curse) flag
     public bool nextCardDoubleEffect = false;
+    public int fireCardsPlayedThisTurn = 0;
+
+    private int waterCostReductionsAvailable = 0;
+    private int coldSpringBonusDamage = 0;
+    private CardData pendingSupplyLineReturnCard;
+    private CardData pendingDodgeReturnCard;
+    private bool supplyLineReturnTriggered;
 
     private void Awake()
     {
@@ -24,75 +23,130 @@ public class CardEffectManager : MonoBehaviour
         else Destroy(gameObject);
     }
 
-    // Call this at the start of player's turn
+    public static void EnsureInstance()
+    {
+        if (Instance != null) return;
+
+        GameObject go = new GameObject("CardEffectManager");
+        go.AddComponent<CardEffectManager>();
+    }
+
     public void OnPlayerTurnStart()
     {
+        ResolvePendingDodgeReturn();
+        BeginWatchingSupplyLineDraw();
+
+        CollectibleManager.OnPlayerTurnStart();
+        fireCardsPlayedThisTurn = 0;
+        waterCostReductionsAvailable = 0;
+        coldSpringBonusDamage = 0;
+
         if (PlayerStats.Instance != null)
         {
             PlayerStats.Instance.StartTurn();
         }
-        
-        // Reset turn-based flags
-        // (reserved for future use)
 
-        // Volcano Logic: 3 stacks to trigger
-        if (volcanoStacks > 0)
+        EndWatchingSupplyLineDraw();
+
+        var enemies = EnemyManager.Instance != null
+            ? EnemyManager.Instance.ActiveEnemies
+            : new List<Enemy>();
+
+        foreach (var enemy in new List<Enemy>(enemies))
         {
-            volcanoStacks++;
-            if (volcanoStacks >= 3)
-            {
-                // Trigger 60 AOE Fire Damage
-                DamageAllEnemies(60, DamageType.Fire);
-                volcanoStacks = 0; // Reset
-                Debug.Log("Volcano Erupted!");
-            }
-        }
-        
-        var enemies = FindObjectsOfType<Enemy>();
-        foreach (var enemy in enemies)
-        {
-            enemy.ProcessTurnStart();
+            if (enemy != null)
+                enemy.ProcessTurnStart();
         }
     }
 
-    // Call this at the end of player's turn
     public void OnPlayerTurnEnd()
     {
         if (PlayerStats.Instance != null)
         {
             PlayerStats.Instance.EndTurn();
         }
+    }
 
-        // Enemy turn end processing
-        var enemies = FindObjectsOfType<Enemy>();
-        foreach (var enemy in enemies)
+    public void OnEnemyTurnEnd()
+    {
+        var enemies = EnemyManager.Instance != null
+            ? EnemyManager.Instance.ActiveEnemies
+            : new List<Enemy>();
+
+        foreach (var enemy in new List<Enemy>(enemies))
         {
-            enemy.ProcessTurnEnd();
+            if (enemy != null)
+                enemy.ProcessTurnEnd();
         }
     }
 
     public void OnEnemyKilled()
     {
-        // 安营扎寨 logic is handled by DeckManager.OnEnemyDied()
     }
 
-    public void PlayCard(CardData card, GameObject target)
+    public void RequestEndPlayerTurn()
     {
-        if (card == null) return;
-        if (PlayerStats.Instance == null) return;
+        CombatController controller = FindObjectOfType<CombatController>();
+        if (controller != null)
+        {
+            controller.RequestEndPlayerTurn();
+            return;
+        }
+
+        OnPlayerTurnEnd();
+    }
+
+    public bool CanPlayCard(CardData card)
+    {
+        if (card == null || PlayerStats.Instance == null) return false;
+        if (PlayerStats.Instance.HasStatus(StatusType.Silenced)) return false;
+        return PlayerStats.Instance.currentMana >= CardCostUtility.GetEffectiveCardCost(card);
+    }
+
+    public bool PlayCard(CardData card, GameObject target)
+    {
+        if (card == null) return false;
+        if (PlayerStats.Instance == null) return false;
 
         PlayerStats player = PlayerStats.Instance;
         Enemy targetEnemy = target != null ? target.GetComponent<Enemy>() : null;
 
-        // General cost check could go here
-        if (player.currentMana < card.cost)
+        if (player.HasStatus(StatusType.Silenced))
+        {
+            Debug.Log("Player is silenced and cannot play cards.");
+            return false;
+        }
+
+        int effectiveCost = CardCostUtility.GetEffectiveCardCost(card);
+        if (player.currentMana < effectiveCost)
         {
             Debug.Log("Not enough mana!");
-            return;
+            return false;
         }
-        player.currentMana -= card.cost;
 
         Debug.Log($"Playing Card: {card.cardName}");
+
+        CardEffect effect = CardEffectCatalog.Resolve(card);
+        if (effect == null)
+        {
+            Debug.LogWarning($"Card effect not assigned: {card.cardName}");
+            return false;
+        }
+
+        SpendTemporaryCostReduction(card);
+        player.currentMana -= effectiveCost;
+
+        var context = new CardEffectContext
+        {
+            Card = card,
+            Player = player,
+            Target = targetEnemy,
+            AllEnemies = EnemyManager.Instance != null
+                ? new List<Enemy>(EnemyManager.Instance.ActiveEnemies)
+                : new List<Enemy>(),
+            Deck = DeckManager.Instance,
+            EffectManager = this
+        };
 
         int repeats = 1;
         if (nextCardDoubleEffect)
@@ -104,356 +158,115 @@ public class CardEffectManager : MonoBehaviour
 
         for (int i = 0; i < repeats; i++)
         {
-            switch (card.cardName)
-            {
-                // --- Light (光) ---
-                case "圣光庇护":
-                    player.AddShield(20);
-                    break;
+            if (DeckManager.Instance != null)
+                DeckManager.Instance.hand.Remove(card);
 
-                case "神圣惩击":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(30, DamageType.Light);
-                        if (targetEnemy.hasDealtDamage)
-                        {
-                            targetEnemy.ApplyStatus(StatusType.Stun, 1);
-                        }
-                    }
-                    break;
-
-                case "光明祈愿":
-                    foreach (var enemy in FindObjectsOfType<Enemy>())
-                    {
-                        enemy.ApplyStatus(StatusType.Purified, 1);
-                    }
-                    player.delayedHealNextTurn += 25;
-                    Debug.Log("光明祈愿: 下回合开始时回复25HP");
-                    break;
-
-                case "魔法闪耀":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.ApplyStatus(StatusType.Confused, 2);
-                    }
-                    break;
-
-                case "虔心吟诵":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(40, DamageType.Light);
-                        targetEnemy.ExtendAllStatus(1);
-                    }
-                    break;
-
-                case "照耀的荣光":
-                    {
-                        int dmg = 60 - shiningGloryDamageReduction;
-                        if (dmg < 0) dmg = 0;
-                        bool killedAny = false;
-                        
-                        List<Enemy> allEnemies = new List<Enemy>(FindObjectsOfType<Enemy>());
-                        foreach (var enemy in allEnemies)
-                        {
-                            int hpBefore = enemy.GetCurrentHealth();
-                            enemy.TakeDamage(dmg, DamageType.Light);
-                            if (enemy.IsDead() || (hpBefore > 0 && enemy.GetCurrentHealth() <= 0))
-                            {
-                                killedAny = true;
-                            }
-                        }
-
-                        if (!killedAny)
-                        {
-                            shiningGloryDamageReduction += 10;
-                        }
-                    }
-                    break;
-                
-                // --- Fire (火) ---
-                case "二重吟唱":
-                    if (targetEnemy != null)
-                    {
-                        int fireDmg = 30;
-                        if (doubleChantUseCount > 0)
-                        {
-                            fireDmg += player.GetAttackDamage();
-                        }
-                        targetEnemy.TakeDamage(fireDmg, DamageType.Fire);
-                    }
-                    doubleChantUseCount++;
-                    break;
-
-                case "点燃":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(20, DamageType.Fire);
-                        
-                        Enemy[] enemies = FindObjectsOfType<Enemy>();
-                        foreach (var e in enemies)
-                        {
-                            if (e != targetEnemy)
-                            {
-                                e.TakeDamage(10, DamageType.Fire);
-                            }
-                        }
-
-                        targetEnemy.ApplyStatus(StatusType.Vulnerable, 1, 10);
-                    }
-                    break;
-
-                case "火焰护盾":
-                    player.AddShield(10);
-                    player.hasFlameShield = true;
-                    break;
-                
-                case "生命火种":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.ApplyStatus(StatusType.Regeneration, 1);
-                        targetEnemy.spreadDamageToNeighbors = true;
-                    }
-                    break;
-
-                case "火山":
-                    DamageAllEnemies(40, DamageType.Fire);
-                    foreach(var enemy in FindObjectsOfType<Enemy>())
-                    {
-                        enemy.ApplyStatus(StatusType.Burn, 2);
-                    }
-                    break;
-
-                case "烈焰打击":
-                    if (targetEnemy != null)
-                    {
-                        int baseDmg = player.GetAttackDamage() + 20;
-                        int extraDmg = 0;
-                        
-                        if (player.currentHealth > 30)
-                        {
-                            int lostHealth = player.currentHealth - 30;
-                            player.SetHealth(30);
-                            extraDmg = (lostHealth / 10) * 10;
-                        }
-                        
-                        targetEnemy.TakeDamage(baseDmg + extraDmg, DamageType.Fire);
-                    }
-                    break;
-
-                // --- Grass (草) ---
-                case "生命滋养":
-                    player.IncreaseMaxHealth(10);
-                    player.Heal(35);
-                    break;
-
-                case "荆棘缠绕":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(20, DamageType.Nature);
-                        targetEnemy.ApplyStatus(StatusType.Poison, 3);
-                    }
-                    break;
-
-                case "自然守护":
-                    player.Heal(40);
-                    player.natureGuardActive = true;
-                    break;
-
-                case "寄生种子":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.ApplyStatus(StatusType.Parasite, 3);
-                    }
-                    break;
-
-                case "生命之树":
-                    player.regenerationTurns += 2;
-                    if (targetEnemy != null && targetEnemy.HasStatus(StatusType.Parasite))
-                    {
-                        targetEnemy.ExtendStatus(StatusType.Parasite, 2);
-                    }
-                    break;
-
-                case "无声润物":
-                    player.SetHealth(100);
-                    player.Cleanse();
-                    break;
-
-                // --- Water (水) ---
-                case "冰霜箭":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(20, DamageType.Ice);
-                        targetEnemy.ApplyStatus(StatusType.Frost, 2); 
-                    }
-                    break;
-
-                case "寒冰护体":
-                    player.AddShield(20);
-                    player.damageReductionNextHit = 0.2f;
-                    break;
-
-                case "激流冲刷":
-                    if (targetEnemy != null)
-                    {
-                        int hpBefore = targetEnemy.GetCurrentHealth();
-                        targetEnemy.TakeDamage(50, DamageType.Ice);
-                        if (targetEnemy.IsDead() || (hpBefore > 0 && targetEnemy.GetCurrentHealth() <= 0))
-                        {
-                            player.RestoreMana(40);
-                            player.Heal(20);
-                        }
-                    }
-                    break;
-                
-                case "蚀骨丰泽":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.ApplyStatus(StatusType.Corrosion, 2);
-                        Enemy[] all = FindObjectsOfType<Enemy>();
-                        foreach(var e in all)
-                        {
-                            if (e != targetEnemy)
-                            {
-                                e.ApplyStatus(StatusType.Corrosion, 2);
-                            }
-                        }
-                    }
-                    break;
-
-                case "冰封领域":
-                    foreach (var enemy in FindObjectsOfType<Enemy>())
-                    {
-                        enemy.ApplyStatus(StatusType.Freeze, 1);
-                    }
-                    break;
-
-                case "霜涛覆岭":
-                    foreach (var enemy in FindObjectsOfType<Enemy>())
-                    {
-                        bool hasFrost = enemy.HasStatus(StatusType.Frost);
-                        enemy.ApplyStatus(StatusType.Frost, 2);
-                        if (hasFrost)
-                        {
-                            enemy.ApplyStatus(StatusType.Freeze, 1);
-                        }
-                        enemy.TakeDamage(30 + player.GetAttackDamage(), DamageType.Ice);
-                    }
-                    break;
-
-                // --- Shadow (暗影) ---
-                case "暗影侵蚀":
-                    if (targetEnemy != null)
-                    {
-                        targetEnemy.TakeDamage(20, DamageType.Shadow);
-                        targetEnemy.ApplyStatus(StatusType.Corrosion, 2);
-                    }
-                    break;
-
-                case "暗夜突袭":
-                    if (targetEnemy != null)
-                    {
-                        int rand = Random.Range(0, 3);
-                        if (rand == 0) targetEnemy.ApplyStatus(StatusType.Weak, 2);
-                        else if (rand == 1) targetEnemy.ApplyStatus(StatusType.Bleed, 2);
-                        else targetEnemy.ApplyStatus(StatusType.Stun, 1);
-                    }
-                    break;
-
-                case "影月庇护":
-                    player.isUntargetable = true;
-                    player.bleedTurns = 2;
-                    Debug.Log("影月庇护: 本回合无法被选定，自身获得[流血]");
-                    break;
-
-                case "未完成之咒":
-                    nextCardDoubleEffect = true;
-                    // Apply Self Debuffs
-                    player.burnTurns = 2;
-                    player.corrosionTurns = 2;
-                    player.frostTurns = 2;
-                    Debug.Log("Unfinished Curse: Applied Burn, Corrosion, Frost to Player");
-                    break;
-
-                case "吞噬生命":
-                    if (targetEnemy != null)
-                    {
-                        int dmg = player.GetAttackDamage() + Random.Range(2, 5) * 10;
-                        targetEnemy.TakeDamage(dmg, DamageType.Shadow);
-                        player.Heal(dmg);
-                    }
-                    break;
-
-                case "绝望深渊":
-                    if (targetEnemy != null)
-                    {
-                        if (targetEnemy.currentHealth > player.currentHealth)
-                        {
-                            int lostHP = targetEnemy.maxHealth - targetEnemy.currentHealth;
-                            int dmg = Mathf.FloorToInt(lostHP * 0.4f);
-                            targetEnemy.TakeDamage(dmg, DamageType.Shadow);
-                        }
-                        else
-                        {
-                            targetEnemy.TakeDamage(80, DamageType.Shadow);
-                        }
-                    }
-                    break;
-
-                // --- Neutral (无属性) ---
-                case "无中生有":
-                    if (DeckManager.Instance != null)
-                    {
-                        DeckManager.Instance.DrawCardInCombat(2);
-                    }
-                    break;
-
-                case "粮草先行":
-                    player.extraDrawsNextTurn += 1;
-                    break;
-
-                case "安营扎寨":
-                    if (DeckManager.Instance != null)
-                    {
-                        DeckManager.Instance.DrawCardInCombat(1);
-                    }
-                    player.Heal(20);
-                    OnPlayerTurnEnd();
-                    break;
-
-                case "现行等待":
-                    int unused = player.currentMana;
-                    player.extraManaNextTurn += (unused + 2);
-                    OnPlayerTurnEnd();
-                    break;
-
-                case "精打细算":
-                    if (DeckManager.Instance != null)
-                    {
-                        int count = DeckManager.Instance.hand.Count;
-                        DeckManager.Instance.DiscardHand();
-                        DeckManager.Instance.DrawCardInCombat(count + 1);
-                    }
-                    break;
-
-                default:
-                    Debug.LogWarning($"Card effect not implemented: {card.cardName}");
-                    break;
-            }
+            effect.Execute(context);
         }
 
-        // Notify DeckManager that card was played
         if (DeckManager.Instance != null)
         {
-            DeckManager.Instance.OnCardPlayed(card);
+            DeckManager.Instance.OnCardPlayed(card, !context.ShufflePlayedCardIntoDrawPile);
+            if (context.ShufflePlayedCardIntoDrawPile)
+                DeckManager.Instance.ShuffleCardIntoDrawPile(card);
         }
+
+        CollectibleManager.NotifyCardPlayed(card);
+        NotifyCardPlayed(card);
+
+        if (context.EndPlayerTurnAfterPlay)
+            RequestEndPlayerTurn();
+
+        return true;
     }
 
-    private void DamageAllEnemies(int amount, DamageType type)
+    public int GetTemporaryCostReduction(CardData card)
     {
-        foreach (var enemy in FindObjectsOfType<Enemy>())
-        {
-            enemy.TakeDamage(amount, type);
-        }
+        if (card == null) return 0;
+
+        int reduction = 0;
+        if (card.cardName == "余烬连唱")
+            reduction += Mathf.Max(0, fireCardsPlayedThisTurn);
+
+        if (waterCostReductionsAvailable > 0 && card.element == CardElement.Water)
+            reduction += 1;
+
+        return Mathf.Min(reduction, Mathf.Max(0, card.cost));
+    }
+
+    public void AddWaterCostReduction(int count)
+    {
+        waterCostReductionsAvailable += Mathf.Max(0, count);
+    }
+
+    public void EnableColdSpringBonus(int damage)
+    {
+        coldSpringBonusDamage = Mathf.Max(coldSpringBonusDamage, damage);
+    }
+
+    public int ConsumeColdSpringBonus()
+    {
+        int damage = coldSpringBonusDamage;
+        coldSpringBonusDamage = 0;
+        return damage;
+    }
+
+    public void ScheduleSupplyLineReturn(CardData card)
+    {
+        pendingSupplyLineReturnCard = card;
+    }
+
+    public void ScheduleDodgeReturn(CardData card)
+    {
+        pendingDodgeReturnCard = card;
+    }
+
+    private void SpendTemporaryCostReduction(CardData card)
+    {
+        if (card == null) return;
+        if (waterCostReductionsAvailable > 0 && card.element == CardElement.Water)
+            waterCostReductionsAvailable--;
+    }
+
+    private void NotifyCardPlayed(CardData card)
+    {
+        if (card != null && card.element == CardElement.Fire)
+            fireCardsPlayedThisTurn++;
+    }
+
+    private void ResolvePendingDodgeReturn()
+    {
+        if (pendingDodgeReturnCard == null) return;
+        if (PlayerStats.Instance != null && !PlayerStats.Instance.HasLostHealthThisTurn && DeckManager.Instance != null)
+            DeckManager.Instance.ShuffleCardIntoDrawPile(pendingDodgeReturnCard);
+
+        pendingDodgeReturnCard = null;
+    }
+
+    private void BeginWatchingSupplyLineDraw()
+    {
+        if (pendingSupplyLineReturnCard == null || DeckManager.Instance == null) return;
+
+        supplyLineReturnTriggered = false;
+        DeckManager.Instance.CardDrawn -= OnSupplyLineWatchedCardDrawn;
+        DeckManager.Instance.CardDrawn += OnSupplyLineWatchedCardDrawn;
+    }
+
+    private void EndWatchingSupplyLineDraw()
+    {
+        if (pendingSupplyLineReturnCard == null || DeckManager.Instance == null) return;
+
+        DeckManager.Instance.CardDrawn -= OnSupplyLineWatchedCardDrawn;
+        if (supplyLineReturnTriggered)
+            DeckManager.Instance.ShuffleCardIntoDrawPile(pendingSupplyLineReturnCard);
+
+        pendingSupplyLineReturnCard = null;
+        supplyLineReturnTriggered = false;
+    }
+
+    private void OnSupplyLineWatchedCardDrawn(CardData card)
+    {
+        if (card != null && card.element == CardElement.Neutral)
+            supplyLineReturnTriggered = true;
     }
 }

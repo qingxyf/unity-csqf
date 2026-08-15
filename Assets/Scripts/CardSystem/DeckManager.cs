@@ -1,13 +1,22 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 public class DeckManager : MonoBehaviour
 {
     public static DeckManager Instance;
 
+    public event Action<CardData> CardDrawn;
+    public event Action<CardData> CardPlayed;
+    public event Action HandChanged;
+    public event Action DeckChanged;
+
     [Header("Configuration")]
     public string cardResourcePath = "Cards"; // Path inside Resources folder
+    public int initialDrawCount = 5;
+    public int turnDrawCount = 2;
+    public int maxHandSize = 10;
 
     [Header("State - Out of Combat")]
     public List<CardData> hiddenCardPool = new List<CardData>(); // The hidden pool
@@ -113,6 +122,8 @@ public class DeckManager : MonoBehaviour
                 Debug.Log($"Obtained card: {drawnCard.cardName}");
             }
         }
+
+        DeckChanged?.Invoke();
     }
 
     /// <summary>
@@ -146,12 +157,19 @@ public class DeckManager : MonoBehaviour
                 Debug.LogWarning($"Could not find any card with cost <= {maxCost} even after reshuffle.");
             }
         }
+
+        DeckChanged?.Invoke();
     }
 
     // --- Combat Methods ---
 
     public void StartCombat()
     {
+        if (backpack.Count == 0)
+        {
+            DrawCardsWithMaxCost(10, 3);
+        }
+
         // Move all cards from backpack to draw pile
         drawPile.Clear();
         drawPile.AddRange(backpack);
@@ -162,8 +180,9 @@ public class DeckManager : MonoBehaviour
         
         Shuffle(drawPile);
         Debug.Log("Combat Started! Deck shuffled.");
-        
-        // Initial Draw? Usually turn start handles this.
+
+        DrawCardInCombat(initialDrawCount);
+        DeckChanged?.Invoke();
     }
 
     public void EndCombat()
@@ -187,12 +206,20 @@ public class DeckManager : MonoBehaviour
         }
 
         Debug.Log("Combat Ended! All cards returned to backpack.");
+        DeckChanged?.Invoke();
+        HandChanged?.Invoke();
     }
 
     public void DrawCardInCombat(int count)
     {
         for (int i = 0; i < count; i++)
         {
+            if (hand.Count >= maxHandSize)
+            {
+                Debug.Log("Hand is full.");
+                break;
+            }
+
             if (drawPile.Count == 0)
             {
                 if (discardPile.Count == 0)
@@ -211,15 +238,12 @@ public class DeckManager : MonoBehaviour
             CardData card = drawPile[0];
             drawPile.RemoveAt(0);
             hand.Add(card);
-            
-            // Notify UI or Card Spawner to create visual representation
-            // For now, we just log it. In a real implementation, we'd invoke an event.
             Debug.Log($"Drew card: {card.cardName}");
-            
-            // Assuming there's a HandManager or CardSpawner listening to this
-            // or we manually spawn it here if we had reference to the UI/Canvas.
-            // For this task, we focus on logic.
+            CardDrawn?.Invoke(card);
         }
+
+        HandChanged?.Invoke();
+        DeckChanged?.Invoke();
     }
 
     /// <summary>
@@ -244,6 +268,9 @@ public class DeckManager : MonoBehaviour
             // Let's assume it returns to hand.
             hand.Add(card);
             Debug.Log("Double Chant triggered: Card returns to hand!");
+            CardPlayed?.Invoke(card);
+            HandChanged?.Invoke();
+            DeckChanged?.Invoke();
             return;
         }
 
@@ -269,22 +296,102 @@ public class DeckManager : MonoBehaviour
                 discardPile.Add(card);
             }
         }
+
+        CardPlayed?.Invoke(card);
+        HandChanged?.Invoke();
+        DeckChanged?.Invoke();
     }
 
     public void DiscardHand()
     {
-        foreach (var card in hand)
+        foreach (var card in new List<CardData>(hand))
         {
             discardPile.Add(card);
         }
         hand.Clear();
         Debug.Log("Hand discarded.");
+        HandChanged?.Invoke();
+        DeckChanged?.Invoke();
     }
 
     public void AddCardToTop(CardData card)
     {
+        if (card == null) return;
         drawPile.Insert(0, card);
         Debug.Log($"Card {card.cardName} added to top of draw pile.");
+        DeckChanged?.Invoke();
+    }
+
+    public bool DiscardSpecificHandCard(CardData card)
+    {
+        if (card == null) return false;
+        if (!hand.Remove(card)) return false;
+
+        discardPile.Add(card);
+        HandChanged?.Invoke();
+        DeckChanged?.Invoke();
+        return true;
+    }
+
+    public void ShuffleCardIntoDrawPile(CardData card)
+    {
+        if (card == null) return;
+
+        hand.Remove(card);
+        discardPile.Remove(card);
+        exhaustPile.Remove(card);
+
+        int index = UnityEngine.Random.Range(0, drawPile.Count + 1);
+        drawPile.Insert(index, card);
+        DeckChanged?.Invoke();
+    }
+
+    public bool RemoveRandomBackpackCard(out CardData removedCard)
+    {
+        removedCard = null;
+        if (backpack.Count == 0) return false;
+
+        int idx = UnityEngine.Random.Range(0, backpack.Count);
+        removedCard = backpack[idx];
+        backpack.RemoveAt(idx);
+        DeckChanged?.Invoke();
+        return true;
+    }
+
+    public void AddCardToBackpack(CardData card)
+    {
+        if (card == null) return;
+        backpack.Add(card);
+        DeckChanged?.Invoke();
+    }
+
+    public List<CardData> GetRewardChoices(int count, int maxCost = int.MaxValue, CardElement? element = null)
+    {
+        List<CardData> choices = new List<CardData>();
+        List<CardData> candidates = hiddenCardPool
+            .Where(c => c != null && c.cost <= maxCost && (!element.HasValue || c.element == element.Value))
+            .GroupBy(c => c.cardName)
+            .Select(g => g.First())
+            .ToList();
+
+        Shuffle(candidates);
+        for (int i = 0; i < candidates.Count && choices.Count < count; i++)
+            choices.Add(candidates[i]);
+
+        return choices;
+    }
+
+    public bool TakeCardFromHiddenPool(CardData card)
+    {
+        if (card == null) return false;
+
+        CardData match = hiddenCardPool.FirstOrDefault(c => c == card || c.cardName == card.cardName);
+        if (match == null) return false;
+
+        hiddenCardPool.Remove(match);
+        backpack.Add(match);
+        DeckChanged?.Invoke();
+        return true;
     }
 
     public void OnEnemyDied()
@@ -296,6 +403,7 @@ public class DeckManager : MonoBehaviour
             exhaustPile.Remove(campCard);
             drawPile.Insert(0, campCard); // 加入牌堆顶
             Debug.Log("安营扎寨: Enemy died, card added to top of draw pile.");
+            DeckChanged?.Invoke();
         }
     }
 
@@ -307,7 +415,7 @@ public class DeckManager : MonoBehaviour
         while (n > 1)
         {
             n--;
-            int k = Random.Range(0, n + 1);
+            int k = UnityEngine.Random.Range(0, n + 1);
             T value = list[k];
             list[k] = list[n];
             list[n] = value;

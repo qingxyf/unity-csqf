@@ -45,3 +45,8 @@ Assets/dist/
 
 # Claude config
 .claude/
+
+# Local tool state and transient diagnostics
+/.superpowers/
+/tmp/
+/output/

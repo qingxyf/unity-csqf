@@ -1,43 +1,101 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class PlayerStats : MonoBehaviour
+public class PlayerStats : MonoBehaviour, IDamageable
 {
     [Header("基础属性")]
-    public int baseMaxHealth = 100; // Permanent Max Health
-    public int maxHealth = 100;     // Current Battle Max Health
+    public int baseMaxHealth = 100;
+    public int maxHealth = 100;
     public int currentHealth;
     public int baseAttack = 10;
-    public int maxMana = 100;
+    public int initialMana = 6;
+    public int maxMana = 10;
+    public int manaRegenPerTurn = 2;
     public int currentMana;
     public int currentShield = 0;
-    
-    // New fields for card effects
-    public List<GameObject> damageSourcesThisTurn = new List<GameObject>();
-    public bool hasFlameShield = false; 
-    public float damageReductionNextHit = 0f; // 0 to 1
-    public int flatDamageReductionNextHit = 0; // Flat reduction
-    public bool isUntargetable = false;
-    public int regenerationTurns = 0; // Simple turn counter for Regeneration logic
-    
-    // Self Debuffs (Simulated)
-    public int burnTurns = 0;
-    public int corrosionTurns = 0;
-    public int frostTurns = 0;
-    public int bleedTurns = 0;
+    public int startingGold = 80;
+    public int gold = 80;
 
-    // New fields for Neutral card effects
+    public List<GameObject> damageSourcesThisTurn = new List<GameObject>();
+    public bool hasFlameShield = false;
+    public float damageReductionNextHit = 0f;
+    public int flatDamageReductionNextHit = 0;
+    public bool isUntargetable = false;
+    public int regenerationTurns = 0;
+
+    // Status effects managed by the StatusEffect system
+    private List<StatusEffect> activeEffects = new List<StatusEffect>();
+
+    // Legacy accessors for card effects that still set these directly
+    public int burnTurns
+    {
+        get { var e = GetEffect(StatusType.Burn); return e != null ? e.Duration : 0; }
+        set { SetSimpleEffect(StatusType.Burn, value); }
+    }
+    public int corrosionTurns
+    {
+        get { var e = GetEffect(StatusType.Corrosion); return e != null ? e.Duration : 0; }
+        set { SetSimpleEffect(StatusType.Corrosion, value); }
+    }
+    public int frostTurns
+    {
+        get { var e = GetEffect(StatusType.Frost); return e != null ? e.Duration : 0; }
+        set { SetSimpleEffect(StatusType.Frost, value); }
+    }
+    public int bleedTurns
+    {
+        get { var e = GetEffect(StatusType.Bleed); return e != null ? e.Duration : 0; }
+        set { SetSimpleEffect(StatusType.Bleed, value); }
+    }
+
+    private void SetSimpleEffect(StatusType type, int duration)
+    {
+        activeEffects.RemoveAll(e => e.Type == type);
+        if (duration > 0)
+        {
+            var effect = StatusEffectFactory.Create(type, duration);
+            if (effect != null) activeEffects.Add(effect);
+        }
+    }
+
+    private StatusEffect GetEffect(StatusType type)
+    {
+        return activeEffects.Find(e => e.Type == type);
+    }
+
+    public bool HasStatus(StatusType type)
+    {
+        return GetEffect(type) != null;
+    }
+
+    public void RemoveStatus(StatusType type)
+    {
+        activeEffects.RemoveAll(e => e.Type == type);
+    }
+
+    public IReadOnlyList<StatusEffect> GetActiveEffects()
+    {
+        return activeEffects;
+    }
+
     public int extraDrawsNextTurn = 0;
     public int extraManaNextTurn = 0;
-
-    // Delayed healing (光明祈愿)
     public int delayedHealNextTurn = 0;
-
-    // Nature Guard passive (自然守护)
     public bool natureGuardActive = false;
+    public bool HasLostHealthThisTurn => lostHealthThisTurn;
+
+    public float lifeDamageReductionThisTurn = 0f;
+    public int thornCounterAttackDamage = 0;
+    private bool lostHealthThisTurn = false;
+    private int starPrayerTurns = 0;
+    private int starPrayerShield = 0;
+    private int starPrayerHeal = 0;
 
     [Header("单例模式")]
     public static PlayerStats Instance;
+
+    private bool initialized;
+    private bool isInitialCombatTurn;
 
     private void Awake()
     {
@@ -45,32 +103,37 @@ public class PlayerStats : MonoBehaviour
         else Destroy(gameObject);
     }
 
+    public static void EnsureInstance()
+    {
+        if (Instance != null) return;
+
+        GameObject go = new GameObject("PlayerStats");
+        PlayerStats stats = go.AddComponent<PlayerStats>();
+        stats.InitializeStats();
+    }
+
     void Start()
     {
-        InitializeStats();
+        if (!initialized)
+            InitializeStats();
     }
 
     public void InitializeStats()
     {
+        initialized = true;
         maxHealth = baseMaxHealth;
         currentHealth = maxHealth;
-        currentMana = maxMana;
+        currentMana = initialMana;
+        gold = startingGold;
         currentShield = 0;
         damageSourcesThisTurn.Clear();
         hasFlameShield = false;
+        activeEffects.Clear();
         Debug.Log($"主角属性初始化: HP {currentHealth}, ATK {baseAttack}, Mana {currentMana}");
     }
 
     public void OnBattleEnd()
     {
-        // Reset Max Health to Base Max Health (removing "Life Nourish" buffs)
-        if (maxHealth != baseMaxHealth)
-        {
-            maxHealth = baseMaxHealth;
-            if (currentHealth > maxHealth) currentHealth = maxHealth;
-            Debug.Log("Battle End: Max Health reset to base value.");
-        }
-        
         currentShield = 0;
         damageSourcesThisTurn.Clear();
         hasFlameShield = false;
@@ -80,62 +143,78 @@ public class PlayerStats : MonoBehaviour
         flatDamageReductionNextHit = 0;
         extraDrawsNextTurn = 0;
         extraManaNextTurn = 0;
-        burnTurns = 0;
-        corrosionTurns = 0;
-        frostTurns = 0;
-        bleedTurns = 0;
         delayedHealNextTurn = 0;
         natureGuardActive = false;
+        lifeDamageReductionThisTurn = 0f;
+        thornCounterAttackDamage = 0;
+        lostHealthThisTurn = false;
+        starPrayerTurns = 0;
+        starPrayerShield = 0;
+        starPrayerHeal = 0;
+        activeEffects.Clear();
+    }
+
+    public void BeginCombat()
+    {
+        currentMana = Mathf.Clamp(initialMana, 0, maxMana);
+        AddShield(CollectibleManager.GetStartShield());
+        isInitialCombatTurn = true;
     }
 
     public void StartTurn()
     {
+        if (isInitialCombatTurn)
+        {
+            isInitialCombatTurn = false;
+        }
+        else
+        {
+            currentMana = Mathf.Min(maxMana, currentMana + manaRegenPerTurn);
+        }
+
         damageSourcesThisTurn.Clear();
-        hasFlameShield = false; // Reset Flame Shield
+        hasFlameShield = false;
         isUntargetable = false;
-        natureGuardActive = false; // Reset Nature Guard
+        natureGuardActive = false;
+        lifeDamageReductionThisTurn = 0f;
+        thornCounterAttackDamage = 0;
 
-        // --- Handle Self Debuffs ---
-        if (burnTurns > 0)
+        if (starPrayerTurns > 0)
         {
-            TakeDamage(10, null); // Fire damage
-            Debug.Log("Burn Damage: 10");
-            burnTurns--;
-        }
-        if (corrosionTurns > 0)
-        {
-            TakeDamage(10, null); // Shadow damage
-            Debug.Log("Corrosion Damage: 10");
-            corrosionTurns--;
-        }
-        if (frostTurns > 0)
-        {
-            TakeDamage(5, null); // Ice damage
-            Debug.Log("Frost Damage: 5");
-            frostTurns--;
-        }
-        if (bleedTurns > 0)
-        {
-            TakeDamage(10, null); // Shadow damage
-            Debug.Log("Bleed Damage: 10");
-            bleedTurns--;
+            AddShield(starPrayerShield);
+            if (!lostHealthThisTurn)
+                Heal(starPrayerHeal);
+            starPrayerTurns--;
         }
 
-        // Delayed Heal (光明祈愿)
+        lostHealthThisTurn = false;
+
+        // Process status effects at turn start
+        foreach (var effect in new List<StatusEffect>(activeEffects))
+        {
+            effect.OnTurnStart(this);
+        }
+
+        // Tick and remove expired
+        foreach (var effect in new List<StatusEffect>(activeEffects))
+        {
+            effect.TickDuration();
+        }
+        activeEffects.RemoveAll(e => e.IsExpired);
+
+        // Delayed Heal
         if (delayedHealNextTurn > 0)
         {
             Heal(delayedHealNextTurn);
             Debug.Log($"Delayed Heal: {delayedHealNextTurn} HP");
             delayedHealNextTurn = 0;
         }
-        
-        // Apply Next Turn Effects
+
         if (extraDrawsNextTurn > 0)
         {
             if (DeckManager.Instance != null)
             {
                 DeckManager.Instance.DrawCardInCombat(extraDrawsNextTurn);
-                Debug.Log($"Extra Draw applied: {extraDrawsNextTurn} cards.");
             }
             extraDrawsNextTurn = 0;
         }
@@ -143,7 +222,6 @@ public class PlayerStats : MonoBehaviour
         if (extraManaNextTurn > 0)
         {
             RestoreMana(extraManaNextTurn);
-            Debug.Log($"Extra Mana applied: {extraManaNextTurn}.");
             extraManaNextTurn = 0;
         }
 
@@ -162,58 +240,105 @@ public class PlayerStats : MonoBehaviour
     public void IncreaseMaxHealth(int amount)
     {
         maxHealth += amount;
-        currentHealth += amount; 
-        Debug.Log($"Max Health increased by {amount}. New Max: {maxHealth}");
+        if (maxHealth < 1) maxHealth = 1;
+        currentHealth += amount;
+        if (currentHealth > maxHealth) currentHealth = maxHealth;
+        if (currentHealth < 1) currentHealth = 1;
+    }
+
+    public void IncreaseMaxMana(int amount)
+    {
+        maxMana += amount;
+        if (maxMana < 1) maxMana = 1;
+        currentMana += amount;
+        if (currentMana > maxMana) currentMana = maxMana;
+        if (currentMana < 0) currentMana = 0;
     }
 
     public void SetHealth(int value)
     {
         currentHealth = value;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-        Debug.Log($"Health set to {currentHealth}");
+        if (currentHealth < 0) currentHealth = 0;
     }
 
     public void HealFull()
     {
-        int healAmount = maxHealth - currentHealth;
         currentHealth = maxHealth;
-        currentMana = maxMana; // 假设也回满蓝
-        Debug.Log($"<color=green>主角状态全满！恢复了 {healAmount} 点生命。</color>");
+        currentMana = maxMana;
     }
 
     public void Heal(int amount)
     {
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-        Debug.Log($"<color=green>主角恢复了 {amount} 点生命。当前HP: {currentHealth}</color>");
+    }
+
+    public bool PayHealth(int amount)
+    {
+        if (amount <= 0) return true;
+        if (currentHealth <= amount) return false;
+
+        currentHealth -= amount;
+        if (currentHealth < 1) currentHealth = 1;
+        return true;
+    }
+
+    public void GainGold(int amount)
+    {
+        if (amount <= 0) return;
+        gold += amount;
+    }
+
+    public bool SpendGold(int amount)
+    {
+        if (amount <= 0) return true;
+        if (gold < amount) return false;
+
+        gold -= amount;
+        return true;
     }
 
     public void AddShield(int amount)
     {
         currentShield += amount;
-        Debug.Log($"<color=blue>主角获得了 {amount} 点护盾。当前护盾: {currentShield}</color>");
     }
+
+    public void ApplyStarPrayer(int duration, int shield, int heal)
+    {
+        starPrayerTurns = Mathf.Max(starPrayerTurns, duration);
+        starPrayerShield = Mathf.Max(starPrayerShield, shield);
+        starPrayerHeal = Mathf.Max(starPrayerHeal, heal);
+    }
+
+    public void ApplyStatus(StatusType type, int duration, int value = 0)
+    {
+        SetSimpleEffect(type, duration);
+    }
+
+    public int GetCurrentHealth() => currentHealth;
+    public int GetMaxHealth() => maxHealth;
+    public bool IsDead() => currentHealth <= 0;
 
     public void RestoreMana(int amount)
     {
         currentMana += amount;
         if (currentMana > maxMana) currentMana = maxMana;
-        Debug.Log($"<color=blue>主角回复了 {amount} 点法力。当前法力: {currentMana}</color>");
     }
-    
+
     public void TakeDamage(int damage, GameObject source = null)
     {
-        if (isUntargetable) 
+        if (isUntargetable)
         {
             Debug.Log("Player is Untargetable! Damage avoided.");
             return;
         }
 
-        // Corrosion Effect: +5 Damage taken
-        if (corrosionTurns > 0)
+        // Corrosion on-damage bonus
+        var corrosion = GetEffect(StatusType.Corrosion);
+        if (corrosion != null)
         {
             damage += 5;
-            Debug.Log("Corrosion: +5 Damage Taken");
         }
 
         if (source != null && !damageSourcesThisTurn.Contains(source))
@@ -221,42 +346,37 @@ public class PlayerStats : MonoBehaviour
             damageSourcesThisTurn.Add(source);
         }
 
-        // Flame Shield Logic
+        // Flame Shield
         if (hasFlameShield && source != null)
         {
-             var enemy = source.GetComponent<Enemy>();
-             if (enemy != null)
-             {
-                 // Apply Burn: "令伤害来源获得[烧伤]" -> Default 2 turns
-                 enemy.ApplyStatus(StatusType.Burn, 2);
-                 Debug.Log("Flame Shield triggered: Burn applied to attacker!");
-             }
+            var enemy = source.GetComponent<Enemy>();
+            if (enemy != null)
+            {
+                enemy.ApplyStatus(StatusType.Burn, 2);
+            }
         }
 
-        // Nature Guard Logic (自然守护: 本回合内敌人对你造成伤害时，其受到10点生机伤害)
+        // Nature Guard
         if (natureGuardActive && source != null)
         {
             var enemy = source.GetComponent<Enemy>();
             if (enemy != null)
             {
                 enemy.TakeDamage(10, DamageType.Nature);
-                Debug.Log("Nature Guard triggered: 10 Nature damage to attacker!");
             }
         }
 
         if (damageReductionNextHit > 0)
         {
             damage = Mathf.FloorToInt(damage * (1f - damageReductionNextHit));
-            damageReductionNextHit = 0f; // Consume
-            Debug.Log("Damage Reduced by Barrier!");
+            damageReductionNextHit = 0f;
         }
 
         if (flatDamageReductionNextHit > 0)
         {
             damage -= flatDamageReductionNextHit;
             if (damage < 0) damage = 0;
-            flatDamageReductionNextHit = 0; // Consume
-            Debug.Log("Damage Reduced by Flat Reduction!");
+            flatDamageReductionNextHit = 0;
         }
 
         if (currentShield > 0)
@@ -272,35 +392,316 @@ public class PlayerStats : MonoBehaviour
                 currentShield = 0;
             }
         }
-        
+
+        if (damage > 0 && lifeDamageReductionThisTurn > 0f)
+            damage = Mathf.FloorToInt(damage * (1f - lifeDamageReductionThisTurn));
+
+        if (damage > 0)
+            lostHealthThisTurn = true;
+
+        if (thornCounterAttackDamage > 0 && source != null)
+        {
+            Enemy enemy = source.GetComponent<Enemy>();
+            if (enemy != null)
+                enemy.TakeDamage(thornCounterAttackDamage, DamageType.Nature);
+        }
+
         currentHealth -= damage;
-        Debug.Log($"<color=red>主角受到伤害！剩余HP: {currentHealth}</color>");
+        if (currentHealth < 0) currentHealth = 0;
+    }
+
+    // IDamageable.TakeDamage (used by StatusEffect system)
+    void IDamageable.TakeDamage(int damage, DamageType type)
+    {
+        TakeDamage(damage, null);
     }
 
     public void Cleanse()
     {
-        // Remove negative effects
-        burnTurns = 0;
-        corrosionTurns = 0;
-        frostTurns = 0;
-        bleedTurns = 0;
-
+        activeEffects.RemoveAll(e =>
+            e.Type == StatusType.Burn ||
+            e.Type == StatusType.Corrosion ||
+            e.Type == StatusType.Frost ||
+            e.Type == StatusType.Freeze ||
+            e.Type == StatusType.Poison ||
+            e.Type == StatusType.Stun ||
+            e.Type == StatusType.Weak ||
+            e.Type == StatusType.Vulnerable ||
+            e.Type == StatusType.Bleed ||
+            e.Type == StatusType.Confused ||
+            e.Type == StatusType.Silenced ||
+            e.Type == StatusType.Rooted ||
+            e.Type == StatusType.Parasite);
         Debug.Log("Player Cleansed!");
     }
 
     public int GetAttackDamage()
     {
         int dmg = baseAttack;
-        if (burnTurns > 0)
+        if (GetEffect(StatusType.Burn) != null)
         {
             dmg /= 2;
         }
         return dmg;
     }
+}
 
-    public void DrawCards(int count)
+public enum CollectibleEffectType
+{
+    MaxHealth,
+    MaxMana,
+    ElementDamageBonus,
+    FirstElementCardCostReduction,
+    StartShield,
+    ShopDiscountPercent
+}
+
+[CreateAssetMenu(fileName = "NewCollectible", menuName = "Roguelike/Collectible")]
+public class CollectibleData : ScriptableObject
+{
+    public string collectibleId;
+    public string collectibleName;
+    public Sprite icon;
+    [TextArea(2, 4)]
+    public string description;
+    public CollectibleEffectType effectType;
+    public int amount;
+    public CardElement element = CardElement.Neutral;
+    public DamageType damageType = DamageType.Physical;
+    public int shopPrice = 100;
+}
+
+public static class CollectibleManager
+{
+    private static readonly List<CollectibleData> ownedCollectibles = new List<CollectibleData>();
+    private static readonly HashSet<CardElement> discountedElementsThisTurn = new HashSet<CardElement>();
+
+    public static IReadOnlyList<CollectibleData> OwnedCollectibles => ownedCollectibles;
+
+    public static void Clear()
     {
-        // 这里预留给手牌系统
-        Debug.Log($"<color=cyan>获得 {count} 张手牌！(系统暂未实装)</color>");
+        ownedCollectibles.Clear();
+        discountedElementsThisTurn.Clear();
+    }
+
+    public static void AddCollectible(CollectibleData collectible)
+    {
+        if (collectible == null) return;
+        ownedCollectibles.Add(collectible);
+
+        if (collectible.effectType == CollectibleEffectType.MaxHealth && PlayerStats.Instance != null)
+            PlayerStats.Instance.IncreaseMaxHealth(collectible.amount);
+
+        if (collectible.effectType == CollectibleEffectType.MaxMana && PlayerStats.Instance != null)
+            PlayerStats.Instance.IncreaseMaxMana(collectible.amount);
+    }
+
+    public static void OnPlayerTurnStart()
+    {
+        discountedElementsThisTurn.Clear();
+    }
+
+    public static int GetEffectiveCardCost(CardData card)
+    {
+        if (card == null) return 0;
+
+        int cost = card.cost;
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (collectible.effectType != CollectibleEffectType.FirstElementCardCostReduction) continue;
+            if (collectible.element != card.element) continue;
+            if (discountedElementsThisTurn.Contains(card.element)) continue;
+
+            cost -= collectible.amount;
+        }
+
+        return Mathf.Max(0, cost);
+    }
+
+    public static void NotifyCardPlayed(CardData card)
+    {
+        if (card == null) return;
+
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (collectible.effectType != CollectibleEffectType.FirstElementCardCostReduction) continue;
+            if (collectible.element != card.element) continue;
+
+            discountedElementsThisTurn.Add(card.element);
+        }
+    }
+
+    public static int GetDamageBonus(DamageType damageType)
+    {
+        int bonus = 0;
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (collectible.effectType == CollectibleEffectType.ElementDamageBonus && collectible.damageType == damageType)
+                bonus += collectible.amount;
+        }
+
+        return bonus;
+    }
+
+    public static int GetStartShield()
+    {
+        int shield = 0;
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (collectible.effectType == CollectibleEffectType.StartShield)
+                shield += collectible.amount;
+        }
+
+        return Mathf.Max(0, shield);
+    }
+
+    public static int GetShopDiscountPercent()
+    {
+        int discount = 0;
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (collectible.effectType == CollectibleEffectType.ShopDiscountPercent)
+                discount += collectible.amount;
+        }
+
+        return Mathf.Clamp(discount, 0, 80);
+    }
+
+    public static string GetOwnedCollectibleSummary()
+    {
+        if (ownedCollectibles.Count == 0)
+            return "藏品 0";
+
+        List<string> names = new List<string>();
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (!string.IsNullOrEmpty(collectible.collectibleName))
+                names.Add(collectible.collectibleName);
+        }
+
+        if (names.Count == 0)
+            return $"藏品 {ownedCollectibles.Count}";
+
+        return $"藏品 {ownedCollectibles.Count}: {string.Join("，", names)}";
+    }
+
+    public static CollectibleData CreateRandomCollectible()
+    {
+        CollectibleData[] pool =
+        {
+            CreateMaxHealthCollectible(),
+            CreateGreaterMaxHealthCollectible(),
+            CreateMaxManaCollectible(),
+            CreateStartShieldCollectible(),
+            CreateFireDamageCollectible(),
+            CreateWaterDiscountCollectible(),
+            CreateShopDiscountCollectible()
+        };
+
+        return pool[Random.Range(0, pool.Length)];
+    }
+
+    public static CollectibleData CreateMaxHealthCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "life_specimen";
+        collectible.collectibleName = "生命标本";
+        collectible.icon = LoadCollectibleIcon("life_specimen");
+        collectible.description = "最大生命值 +15。";
+        collectible.effectType = CollectibleEffectType.MaxHealth;
+        collectible.amount = 15;
+        collectible.shopPrice = 110;
+        return collectible;
+    }
+
+    public static CollectibleData CreateGreaterMaxHealthCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "vital_core";
+        collectible.collectibleName = "活力核心";
+        collectible.icon = LoadCollectibleIcon("vital_core");
+        collectible.description = "最大生命值 +25。";
+        collectible.effectType = CollectibleEffectType.MaxHealth;
+        collectible.amount = 25;
+        collectible.shopPrice = 160;
+        return collectible;
+    }
+
+    public static CollectibleData CreateMaxManaCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "energy_core";
+        collectible.collectibleName = "能量核心";
+        collectible.icon = LoadCollectibleIcon("energy_core");
+        collectible.description = "能量上限 +1，并获得 1 点当前能量。";
+        collectible.effectType = CollectibleEffectType.MaxMana;
+        collectible.amount = 1;
+        collectible.shopPrice = 150;
+        return collectible;
+    }
+
+    public static CollectibleData CreateStartShieldCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "aegis_shard";
+        collectible.collectibleName = "圣盾碎片";
+        collectible.icon = LoadCollectibleIcon("aegis_shard");
+        collectible.description = "每场战斗开始时获得 8 点护盾。";
+        collectible.effectType = CollectibleEffectType.StartShield;
+        collectible.amount = 8;
+        collectible.shopPrice = 90;
+        return collectible;
+    }
+
+    public static CollectibleData CreateFireDamageCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "fire_badge";
+        collectible.collectibleName = "火焰徽章";
+        collectible.icon = LoadCollectibleIcon("fire_badge");
+        collectible.description = "火焰伤害 +10。";
+        collectible.effectType = CollectibleEffectType.ElementDamageBonus;
+        collectible.damageType = DamageType.Fire;
+        collectible.amount = 10;
+        collectible.shopPrice = 120;
+        return collectible;
+    }
+
+    public static CollectibleData CreateWaterDiscountCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "cold_tide_pendant";
+        collectible.collectibleName = "寒潮坠饰";
+        collectible.icon = LoadCollectibleIcon("cold_tide_pendant");
+        collectible.description = "每回合第一张水系卡牌费用 -1。";
+        collectible.effectType = CollectibleEffectType.FirstElementCardCostReduction;
+        collectible.element = CardElement.Water;
+        collectible.amount = 1;
+        collectible.shopPrice = 130;
+        return collectible;
+    }
+
+    public static CollectibleData CreateShopDiscountCollectible()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "old_wallet";
+        collectible.collectibleName = "旧钱包";
+        collectible.icon = LoadCollectibleIcon("old_wallet");
+        collectible.description = "商店价格 -15%。";
+        collectible.effectType = CollectibleEffectType.ShopDiscountPercent;
+        collectible.amount = 15;
+        collectible.shopPrice = 100;
+        return collectible;
+    }
+
+    private static Sprite LoadCollectibleIcon(string iconName)
+    {
+        return Resources.Load<Sprite>($"Icons/Collectibles/{iconName}");
     }
 }

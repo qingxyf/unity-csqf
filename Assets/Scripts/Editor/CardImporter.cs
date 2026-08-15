@@ -9,7 +9,7 @@ public class CardImporter : EditorWindow
     public static void ImportCards()
     {
         // Markdown 文件路径（根据您的实际路径）
-        string markdownPath = "Assets/Assets/卡牌/卡牌.md";
+        string markdownPath = "Assets/Scripts/CardSystem/卡牌设计文档.md";
         // 生成的 Asset 保存路径
         string exportPath = "Assets/Resources/Cards";
         

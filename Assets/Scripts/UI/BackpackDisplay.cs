@@ -14,6 +14,7 @@ using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
 
     // 缓存从 Resources/CardPrefabs 加载过的预制体，避免重复加载
     private Dictionary<string, GameObject> prefabCache = new Dictionary<string, GameObject>();
+    private static readonly Vector2 CardSlotHitboxSize = new Vector2(96f, 126f);
 
     private void Start()
     {
@@ -93,7 +94,7 @@ using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
                 }
                 else
                 {
-                    GameObject loadedPrefab = Resources.Load<GameObject>("CardPrefabs/" + card.cardName);
+                    GameObject loadedPrefab = CardResourceUtility.LoadCardPrefab(card);
                     if (loadedPrefab != null)
                     {
                         prefabCache[card.cardName] = loadedPrefab;
@@ -138,15 +139,11 @@ using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
             }
 
             // 使用 RectTransform 设置坐标，更稳健
-            RectTransform rt = go.GetComponent<RectTransform>();
-            if (rt != null)
-            {
-                rt.anchoredPosition = new Vector2(posX, posY);
-            }
-            else
-            {
-                go.transform.localPosition = new Vector3(posX, posY, 0f);
-            }
+            GameObject slot = CreateCardSlot(card, new Vector2(posX, posY));
+            go.transform.SetParent(slot.transform, false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
+            go.transform.localRotation = Quaternion.identity;
 
             CardDisplay display = go.GetComponent<CardDisplay>();
             if (display != null)
@@ -159,7 +156,9 @@ using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
                 newDisplay.Setup(card);
             }
 
-            BackpackCardHoverPreview hover = go.AddComponent<BackpackCardHoverPreview>();
+            DisableRaycastTargets(go);
+
+            BackpackCardHoverPreview hover = slot.AddComponent<BackpackCardHoverPreview>();
             hover.cardData = card;
             hover.stagePreviewParent = stagePreviewParent;
         }
@@ -168,5 +167,39 @@ using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
         {
             Debug.Log("Backpack is empty.");
         }
+    }
+
+    private GameObject CreateCardSlot(CardData card, Vector2 anchoredPosition)
+    {
+        string slotName = card != null && !string.IsNullOrEmpty(card.cardName)
+            ? card.cardName + "_Slot"
+            : "CardSlot";
+
+        GameObject slot = new GameObject(slotName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        slot.transform.SetParent(contentContainer, false);
+
+        RectTransform rt = slot.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = anchoredPosition;
+        rt.sizeDelta = CardSlotHitboxSize;
+        rt.localScale = Vector3.one;
+        rt.localRotation = Quaternion.identity;
+
+        Image image = slot.GetComponent<Image>();
+        image.color = new Color(1f, 1f, 1f, 0.001f);
+        image.raycastTarget = true;
+
+        return slot;
+    }
+
+    private static void DisableRaycastTargets(GameObject root)
+    {
+        foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
+            graphic.raycastTarget = false;
+
+        foreach (GraphicRaycaster raycaster in root.GetComponentsInChildren<GraphicRaycaster>(true))
+            raycaster.enabled = false;
     }
 }

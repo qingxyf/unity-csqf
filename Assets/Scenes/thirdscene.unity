@@ -1270,12 +1270,19 @@ MonoBehaviour:
   example1Prefab: {fileID: 1663893330}
   example2Prefab: {fileID: 865835981}
   midiFileName: missyou.mid
+  preferredTrackIndex: -1
   moveSpeed: 11
   spawnHeight: -2.5
   spawnHeight2: 1
-  TIME_OFFSET: 8.8
+  startDelay: 4.83
+  minNoteInterval: 0.15
+  pitchThreshold: 60
+  autoDetectThreshold: 1
+  maxConsecutiveSameDirection: 3
   hitCount: 0
   score: 0
+  missCount: 0
+  totalNotes: 0
 --- !u!1 &1007975801
 GameObject:
   m_ObjectHideFlags: 0
@@ -1392,6 +1399,7 @@ MonoBehaviour:
   scorePanel: {fileID: 1252320045}
   scoreText: {fileID: 1405020147}
   achievementText: {fileID: 526953043}
+  targetTime: 230
 --- !u!4 &1203102990
 Transform:
   m_ObjectHideFlags: 0

@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using TMPro; 
+using TMPro;
 
 public class Enemy : MonoBehaviour, IDamageable
 {
@@ -10,18 +10,31 @@ public class Enemy : MonoBehaviour, IDamageable
     public int currentHealth;
     public int currentShield = 0;
     public int baseAttack = 10;
-    public bool hasDealtDamage = false; // Tracks if enemy has dealt damage in this battle
+    public bool hasDealtDamage = false;
 
     [Header("UI")]
     public TextMeshProUGUI hpText;
-    public GameObject statusIconContainer; 
+    public GameObject statusIconContainer;
 
-    // Status Effects Storage: Type -> (Duration, Value)
-    private Dictionary<StatusType, StatusEffectData> activeStatuses = new Dictionary<StatusType, StatusEffectData>();
+    private List<StatusEffect> activeEffects = new List<StatusEffect>();
 
-    // Combat State for Elemental Reactions and Card Effects
     public DamageType lastDamageType = DamageType.Physical;
     public bool spreadDamageToNeighbors = false;
+
+    private void OnEnable()
+    {
+        if (EnemyManager.Instance == null)
+            EnemyManager.EnsureInstance();
+
+        if (EnemyManager.Instance != null)
+            EnemyManager.Instance.Register(this);
+    }
+
+    private void OnDisable()
+    {
+        if (EnemyManager.Instance != null)
+            EnemyManager.Instance.Unregister(this);
+    }
 
     private void Start()
     {
@@ -36,35 +49,39 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private void TakeDamageInternal(int damage, DamageType type, bool isSplash)
     {
-        // --- Elemental Reactions ---
-        if (PlayerStats.Instance != null)
+        if (PlayerStats.Instance != null && !HasStatus(StatusType.Purified))
         {
-            // [燃烧伤害]: Fire Damage + (Parasite OR Last was Nature) -> +Base Attack
             if (type == DamageType.Fire)
             {
-                if (activeStatuses.ContainsKey(StatusType.Parasite) || lastDamageType == DamageType.Nature)
+                if (HasStatus(StatusType.Parasite) || lastDamageType == DamageType.Nature)
                 {
                     int bonus = PlayerStats.Instance.GetAttackDamage();
                     damage += bonus;
                     ShowFloatingText($"Combustion! +{bonus}", Color.red);
                 }
             }
-            
-            // [蒸发效果]: Ice Damage + Last was Fire -> Remove Random Buff
+
             if (type == DamageType.Ice && lastDamageType == DamageType.Fire)
             {
                 RemoveRandomBuff();
+                if (CardEffectManager.Instance != null)
+                {
+                    int coldSpringBonus = CardEffectManager.Instance.ConsumeColdSpringBonus();
+                    if (coldSpringBonus > 0)
+                    {
+                        damage += coldSpringBonus;
+                        ShowFloatingText($"Cold Spring! +{coldSpringBonus}", Color.cyan);
+                    }
+                }
                 ShowFloatingText("Vaporize!", Color.cyan);
             }
 
-            // [丰饶生长]: Nature Damage + Last was Ice -> Extend Random Debuff
             if (type == DamageType.Nature && lastDamageType == DamageType.Ice)
             {
                 ExtendRandomDebuff(1);
                 ShowFloatingText("Bloom!", Color.green);
             }
 
-            // [光暗双生]: Light/Shadow + Shadow/Light -> Player Damage Reduction
             if ((type == DamageType.Light && lastDamageType == DamageType.Shadow) ||
                 (type == DamageType.Shadow && lastDamageType == DamageType.Light))
             {
@@ -73,39 +90,35 @@ public class Enemy : MonoBehaviour, IDamageable
             }
         }
 
-        // Update Last Damage Type
         if (damage > 0)
         {
+            damage += CollectibleManager.GetDamageBonus(type);
             lastDamageType = type;
         }
 
-        // Spread Damage Logic (Life Spark)
-        if (spreadDamageToNeighbors && !isSplash)
+        if (spreadDamageToNeighbors && !isSplash && EnemyManager.Instance != null)
         {
-            Enemy[] allEnemies = FindObjectsOfType<Enemy>();
-            // Simple neighbor logic: All other enemies
-            foreach (var e in allEnemies)
+            foreach (var e in CardEffectHelper.GetAdjacentEnemies(EnemyManager.Instance.ActiveEnemies, this))
             {
-                if (e != this)
-                {
-                    e.TakeDamageInternal(damage, type, true);
-                }
+                e.TakeDamageInternal(damage, type, true);
             }
             ShowFloatingText("Splash!", Color.yellow);
         }
 
-        // Vulnerable (Specific to Fire for now based on "Ignite" card)
-        if (type == DamageType.Fire && activeStatuses.ContainsKey(StatusType.Vulnerable))
+        // Vulnerable
+        var vulnerable = GetEffect(StatusType.Vulnerable);
+        if (type == DamageType.Fire && vulnerable != null)
         {
-             damage += activeStatuses[StatusType.Vulnerable].value;
-             activeStatuses.Remove(StatusType.Vulnerable); // Consume "Next time"
-             ShowFloatingText("Vulnerable Hit!", Color.red);
+            damage += vulnerable.Value;
+            RemoveEffect(StatusType.Vulnerable);
+            ShowFloatingText("Vulnerable Hit!", Color.red);
         }
 
-        // Corrosion: Extra 5 damage when taking damage
-        if (activeStatuses.ContainsKey(StatusType.Corrosion))
+        // Corrosion on-damage bonus
+        var corrosion = GetEffect(StatusType.Corrosion);
+        if (corrosion != null)
         {
-            damage += 5;
+            corrosion.OnDamageTaken(this, ref damage);
             ShowFloatingText("+5 (Corrosion)", Color.magenta);
         }
 
@@ -137,7 +150,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void Heal(int amount)
     {
-        if (activeStatuses.ContainsKey(StatusType.Bleed))
+        if (HasStatus(StatusType.Bleed))
         {
             ShowFloatingText("Bleeding!", Color.gray);
             return;
@@ -145,7 +158,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-        
+
         ShowFloatingText("+" + amount, Color.green);
         UpdateUI();
     }
@@ -158,128 +171,51 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void ApplyStatus(StatusType type, int duration, int value = 0)
     {
-        // Purified: 无法触发额外效果 (cannot have additional effects applied)
-        // Only allow Purified itself to be applied; block all other new statuses
-        if (activeStatuses.ContainsKey(StatusType.Purified) && type != StatusType.Purified)
+        RemoveEffect(type);
+
+        var effect = StatusEffectFactory.Create(type, duration, value);
+        if (effect != null)
         {
-            ShowFloatingText("Purified! Blocked!", Color.white);
-            Debug.Log($"{enemyName}: {type} blocked by Purified.");
-            return;
+            activeEffects.Add(effect);
         }
-        
-        if (activeStatuses.ContainsKey(type))
-        {
-            activeStatuses[type] = new StatusEffectData { duration = duration, value = value };
-        }
-        else
-        {
-            activeStatuses.Add(type, new StatusEffectData { duration = duration, value = value });
-        }
+
         ShowFloatingText(type.ToString(), Color.yellow);
         Debug.Log($"{enemyName} applied {type} for {duration} turns.");
     }
-    
-    // Call this at start of turn
+
     public void ProcessTurnStart()
     {
-        List<StatusType> toRemove = new List<StatusType>();
-        
-        foreach (var kvp in new Dictionary<StatusType, StatusEffectData>(activeStatuses))
+        foreach (var effect in new List<StatusEffect>(activeEffects))
         {
-            StatusType type = kvp.Key;
-            StatusEffectData data = kvp.Value;
-
-            switch (type)
-            {
-                case StatusType.Burn: // Start of turn: 10 fire damage
-                    TakeDamage(10, DamageType.Fire);
-                    break;
-                case StatusType.Corrosion: // Start of turn: 10 shadow damage
-                    TakeDamage(10, DamageType.Shadow);
-                    break;
-                case StatusType.Frost: // Start of turn: 5 ice damage
-                    TakeDamage(5, DamageType.Ice);
-                    break;
-                case StatusType.Poison: // Start of turn: Lose 10% current HP (max 30)
-                    int poisonDmg = Mathf.Min(30, Mathf.FloorToInt(currentHealth * 0.1f));
-                    TakeDamage(poisonDmg, DamageType.Nature);
-                    break;
-                case StatusType.Freeze: // Start of turn: 5 ice damage + cannot act
-                    TakeDamage(5, DamageType.Ice);
-                    break;
-                case StatusType.Bleed: // Start of turn: 10 shadow damage
-                    TakeDamage(10, DamageType.Shadow);
-                    break;
-            }
-
-            // Decrement duration for start-of-turn effects? 
-            // Usually duration ticks down at end of turn. 
-            // But if effect happens at start, maybe tick here? 
-            // Let's assume standard turn structure: Start -> Action -> End (Tick).
-            // So we don't tick here, we tick at ProcessTurnEnd.
+            effect.OnTurnStart(this);
         }
         UpdateUI();
     }
 
     public void ProcessTurnEnd()
     {
-        List<StatusType> toRemove = new List<StatusType>();
-
-        foreach (var kvp in new Dictionary<StatusType, StatusEffectData>(activeStatuses))
+        foreach (var effect in new List<StatusEffect>(activeEffects))
         {
-            StatusType type = kvp.Key;
-            StatusEffectData data = kvp.Value;
-
-            switch (type)
-            {
-                case StatusType.Regeneration: // End of turn: Heal 20% Max HP
-                    Heal(Mathf.FloorToInt(maxHealth * 0.2f));
-                    break;
-                case StatusType.Parasite: // End of turn: Lose 10% Max HP, Healer heals 50%
-                    int paraDmg = Mathf.FloorToInt(maxHealth * 0.1f);
-                    TakeDamage(paraDmg, DamageType.Nature);
-                    if (PlayerStats.Instance != null)
-                    {
-                        PlayerStats.Instance.Heal(paraDmg / 2);
-                    }
-                    break;
-            }
-
-            data.duration--;
-            if (data.duration <= 0)
-            {
-                toRemove.Add(type);
-            }
-            else
-            {
-                activeStatuses[type] = data;
-            }
+            effect.OnTurnEnd(this);
+            effect.TickDuration();
         }
 
-        foreach (var type in toRemove)
-        {
-            activeStatuses.Remove(type);
-        }
-        
-        // Reset turn-based flags
+        activeEffects.RemoveAll(e => e.IsExpired);
         spreadDamageToNeighbors = false;
-        
         UpdateUI();
     }
 
-    // Called by TurnManager to execute enemy action
     public void AttackPlayer()
     {
         if (!CanAct()) return;
 
         int dmg = GetAttackDamage();
 
-        // Confused: attack self
-        if (activeStatuses.ContainsKey(StatusType.Confused))
+        if (HasStatus(StatusType.Confused))
         {
             TakeDamage(dmg, DamageType.Physical);
             ShowFloatingText("Confused Hit Self!", Color.yellow);
-            activeStatuses.Remove(StatusType.Confused); // 下次攻击时触发，消耗掉
+            RemoveEffect(StatusType.Confused);
             return;
         }
 
@@ -293,49 +229,79 @@ public class Enemy : MonoBehaviour, IDamageable
     public int GetCurrentHealth() => currentHealth;
     public int GetMaxHealth() => maxHealth;
     public bool IsDead() => currentHealth <= 0;
-    public bool HasStatus(StatusType type) => activeStatuses.ContainsKey(type);
+
+    public bool HasStatus(StatusType type)
+    {
+        return activeEffects.Exists(e => e.Type == type);
+    }
+
+    public bool HasAnyDebuff()
+    {
+        return CountDebuffs() > 0;
+    }
+
+    public int CountDebuffs()
+    {
+        int count = 0;
+        foreach (StatusEffect effect in activeEffects)
+        {
+            if (effect == null) continue;
+            if (effect.Type != StatusType.Regeneration)
+                count++;
+        }
+        return count;
+    }
+
+    public StatusEffect GetEffect(StatusType type)
+    {
+        return activeEffects.Find(e => e.Type == type);
+    }
+
+    private void RemoveEffect(StatusType type)
+    {
+        activeEffects.RemoveAll(e => e.Type == type);
+    }
+
+    public void RemoveStatus(StatusType type)
+    {
+        RemoveEffect(type);
+    }
 
     public void ExtendStatus(StatusType type, int turns)
     {
-        if (activeStatuses.ContainsKey(type))
+        var effect = GetEffect(type);
+        if (effect != null)
         {
-            var data = activeStatuses[type];
-            data.duration += turns;
-            activeStatuses[type] = data;
+            effect.ExtendDuration(turns);
         }
     }
 
     public void ExtendAllStatus(int turns)
     {
-        List<StatusType> keys = new List<StatusType>(activeStatuses.Keys);
-        foreach (var key in keys)
+        foreach (var effect in activeEffects)
         {
-            ExtendStatus(key, turns);
+            effect.ExtendDuration(turns);
         }
     }
 
     public bool CanAct()
     {
-        if (activeStatuses.ContainsKey(StatusType.Freeze) || 
-            activeStatuses.ContainsKey(StatusType.Stun) || 
-            activeStatuses.ContainsKey(StatusType.Rooted) ||
-            activeStatuses.ContainsKey(StatusType.Silenced)) 
-        {
-            return false;
-        }
-        return true;
+        return !HasStatus(StatusType.Freeze) &&
+               !HasStatus(StatusType.Stun) &&
+               !HasStatus(StatusType.Rooted) &&
+               !HasStatus(StatusType.Silenced);
     }
 
     public int GetAttackDamage()
     {
         int dmg = baseAttack;
-        
-        if (activeStatuses.ContainsKey(StatusType.Weak))
+
+        if (HasStatus(StatusType.Weak))
         {
             dmg -= 10;
         }
 
-        if (activeStatuses.ContainsKey(StatusType.Burn))
+        if (HasStatus(StatusType.Burn))
         {
             dmg = Mathf.FloorToInt(dmg * 0.5f);
         }
@@ -347,7 +313,7 @@ public class Enemy : MonoBehaviour, IDamageable
     private void Die()
     {
         Debug.Log($"{enemyName} Died!");
-        
+
         if (CardEffectManager.Instance != null)
         {
             CardEffectManager.Instance.OnEnemyKilled();
@@ -363,42 +329,23 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private void RemoveRandomBuff()
     {
-        List<StatusType> buffs = new List<StatusType>();
-        foreach (var kvp in activeStatuses)
-        {
-            // Identify Buffs: Regeneration, Shield(not status), etc.
-            // Currently only Regeneration is a clear buff in our list.
-            if (kvp.Key == StatusType.Regeneration)
-            {
-                buffs.Add(kvp.Key);
-            }
-        }
+        List<StatusEffect> buffs = activeEffects.FindAll(e => e.Type == StatusType.Regeneration);
 
         if (buffs.Count > 0)
         {
-            StatusType toRemove = buffs[Random.Range(0, buffs.Count)];
-            activeStatuses.Remove(toRemove);
+            var toRemove = buffs[Random.Range(0, buffs.Count)];
+            activeEffects.Remove(toRemove);
         }
     }
 
     private void ExtendRandomDebuff(int turns)
     {
-        List<StatusType> debuffs = new List<StatusType>();
-        foreach (var kvp in activeStatuses)
-        {
-            // Identify Debuffs: Everything except Regeneration
-            if (kvp.Key != StatusType.Regeneration)
-            {
-                debuffs.Add(kvp.Key);
-            }
-        }
+        List<StatusEffect> debuffs = activeEffects.FindAll(e => e.Type != StatusType.Regeneration);
 
         if (debuffs.Count > 0)
         {
-            StatusType toExtend = debuffs[Random.Range(0, debuffs.Count)];
-            var data = activeStatuses[toExtend];
-            data.duration += turns;
-            activeStatuses[toExtend] = data;
+            var toExtend = debuffs[Random.Range(0, debuffs.Count)];
+            toExtend.ExtendDuration(turns);
         }
     }
 
@@ -414,10 +361,4 @@ public class Enemy : MonoBehaviour, IDamageable
     {
         Debug.Log($"[{enemyName}] Floating Text: {text}");
     }
-}
-
-public struct StatusEffectData
-{
-    public int duration;
-    public int value;
 }

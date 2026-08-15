@@ -1,69 +1,98 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance;
+
     public MapGenerator mapGenerator;
-    public PathManager pathManager;
     public NodeContentManager contentManager;
-    
-    // 当前游戏状态
+
+    private Node currentNode;
     private bool gameStarted = false;
-    
+
     private void Awake()
     {
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+
         if (mapGenerator == null) mapGenerator = FindObjectOfType<MapGenerator>();
-        if (pathManager == null) pathManager = FindObjectOfType<PathManager>();
         if (contentManager == null) contentManager = FindObjectOfType<NodeContentManager>();
     }
 
     void Start()
     {
-        // 初始化游戏
-        InitializeGame();
+        if (!gameStarted)
+            InitializeGame();
     }
-    
+
     public void InitializeGame()
     {
-        // 开始新的旅程
-        pathManager.StartJourney();
+        if (mapGenerator == null)
+        {
+            Debug.LogError("GameManager: MapGenerator 未配置，无法生成地图。");
+            return;
+        }
+
         gameStarted = true;
+        mapGenerator.GenerateMap();
     }
-    
-    // 玩家选择移动到某个节点
-    public void SelectNode(Node targetNode)
+
+    /// <summary>
+    /// 玩家点击节点时由 Node.OnMouseDown 调用。
+    /// 统一处理：地图移动 → 隐藏地图 → 加载节点内容。
+    /// </summary>
+    public void SelectNode(Node node)
     {
-        if (!gameStarted) return;
-        
-        pathManager.MoveToNode(targetNode);
-        
+        if (node == null || !node.isActive || node.isCompleted) return;
+
+        currentNode = node;
+
+        // 更新地图状态（标记完成、激活下一层）
+        if (mapGenerator != null)
+            mapGenerator.MoveToNode(node);
+
+        // 隐藏地图
+        if (mapGenerator != null && mapGenerator.mapContainer != null)
+            mapGenerator.mapContainer.gameObject.SetActive(false);
+
+        // 播放行走动画
+        AnimationSwitcher animSwitcher = FindObjectOfType<AnimationSwitcher>();
+        if (animSwitcher != null) animSwitcher.PlayAnimation2();
+
+        InfiniteBackgroundScroller scroller = FindObjectOfType<InfiniteBackgroundScroller>();
+        if (scroller != null) scroller.StartScrolling();
+
         // 加载节点内容
-        contentManager.LoadNodeContent(targetNode.type);
+        if (contentManager != null)
+            contentManager.LoadNodeContent(node);
+
+        Debug.Log($"进入节点: {node.type} (深度 {node.depth})");
     }
-    
-    // 完成当前节点内容
+
+    /// <summary>
+    /// 节点内容完成后调用（战斗胜利、事件结束、商店关闭等）。
+    /// 清除内容，重新打开地图。
+    /// </summary>
     public void CompleteCurrentNode()
     {
-        Debug.Log("节点完成，正在返回地图...");
+        if (currentNode != null && currentNode.type == NodeType.Boss)
+        {
+            if (contentManager != null)
+                contentManager.ClearCurrentContent();
 
-        // 1. 清除当前节点的内容（如营地UI、战斗场景等）
+            if (Application.CanStreamedLevelBeLoaded("final"))
+                SceneManager.LoadScene("final");
+            else
+                Debug.Log("Boss 已击败：当前构建设置中未找到 final 场景。");
+            return;
+        }
+
         if (contentManager != null)
-        {
             contentManager.ClearCurrentContent();
-        }
 
-        // 2. 重新激活地图界面
-        if (mapGenerator != null && mapGenerator.mapContainer != null)
-        {
-            mapGenerator.mapContainer.gameObject.SetActive(true);
-            
-            // 可选：调用 UpdateNodeVisibility 确保显示正确
-            mapGenerator.UpdateNodeVisibility();
-        }
-        else
-        {
-            Debug.LogError("GameManager: MapGenerator or mapContainer not found!");
-        }
+        if (mapGenerator != null)
+            mapGenerator.ReopenMap();
+        Debug.Log("节点完成，返回地图");
     }
 }

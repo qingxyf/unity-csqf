@@ -2,6 +2,13 @@
 
 一款基于 Unity 开发的回合制卡牌 Roguelike 游戏，灵感来源于《杀戮尖塔》。玩家在程序生成的节点地图上探索，收集卡牌，通过元素搭配与策略组合击败敌人和 Boss。
 
+## 文档
+
+- [技术总览](docs/technical-overview.md)
+- [Roguelike 事件与内容](docs/roguelike/events-and-content.md)
+- [Unity 编辑器配置指南](docs/guides/unity-editor-setup.md)
+- [变更记录](docs/changelog.md)
+
 ## 游戏玩法
 
 ### 节点地图探索
@@ -10,19 +17,23 @@
 
 | 节点类型 | 说明 |
 |---------|------|
-| 营地 (Camp) | 休息回复、获取卡牌 |
+| 营地 (Camp) | 选择休息、补给或精简卡组 |
 | 战斗 (Battle) | 普通战斗遭遇 |
 | 劲敌 (EliteBattle) | 高难度战斗，高回报 |
 | Boss | 关卡最终 Boss |
 | 宝藏 (Treasure) | 获取奖励 |
-| 商店 (Shop) | 购买/出售卡牌 |
+| 商店 (Shop) | 使用金币购买卡牌、回血、刷新或移除卡牌 |
 | 事件 (Event) | 随机事件 |
 
 ### 回合制卡牌战斗
 
-- 每回合消耗法力值使用手牌
+- 初始 6 点能量、上限 10 点；每回合回复 2 点能量
+- 初始抽 5 张牌，之后每回合抽 2 张；回合结束不弃手牌，手牌上限 10
+- 战斗中有常驻 1 能量基础攻击，命中后立即结束玩家回合
 - 从背包组成的牌堆中抽牌，使用后进入弃牌堆
 - 牌堆抽完后弃牌堆重新洗入
+- 普通战斗展示 3 张奖励牌，精英战展示 4 张；都可以选择至多 2 张加入卡组
+- 精英战、事件和商店可以获得收藏品，例如最大生命值提升、能量上限提升、开战护盾、火焰伤害加成、元素减费
 - 通过护盾、回复、控制等手段存活并击败敌人
 
 ### 六大元素
@@ -110,7 +121,7 @@ Assets/
 | `CardCaster` | Scripts/CardSystem/ | 点击出牌逻辑 |
 | `CardDisplay` | Scripts/CardSystem/ | 卡牌 UI 渲染 |
 | `Enemy` | Scripts/Combat/ | 敌人 AI：属性、状态效果处理、元素反应、回合逻辑 |
-| `PlayerStats` | Scripts/ | 玩家属性：HP、法力、护盾、增减益、回合处理 |
+| `PlayerStats` | Scripts/ | 玩家属性：HP、能量、金币、护盾、增减益、回合处理 |
 | `GameManager` | Scripts/NodeSystem/ | 游戏主控制器 |
 | `MapGenerator` | Scripts/NodeSystem/ | 程序化地图生成 |
 | `PathManager` | Scripts/NodeSystem/ | 玩家路径追踪和节点连接 |

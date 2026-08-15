@@ -34,7 +34,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -214.45, y: -252.73}
+  m_AnchoredPosition: {x: -214.249, y: -252.73}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3429245799351039934
@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 38
+  m_text: 3
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7071615201164bd45877cd86d7a4eb78, type: 2}
   m_sharedMaterial: {fileID: 558493206256807409, guid: 7071615201164bd45877cd86d7a4eb78, type: 2}
@@ -283,7 +283,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u9020\u6210 55\u70B9\u4F24\u5BB3\uFF0C\n\u5982\u679C\u51FB\u6740\u654C\u4EBA\uFF0C\u5219\u56DE\n\u590D40\u70B9\u6CD5\u529B\u503C\u548C2\n0\u70B9hp"
+  m_text: "\u9020\u6210 50\u70B9\u51B0\u971C\u4F24\n\u5BB3\uFF0C\u5982\u679C\u51FB\u6740\u654C\u4EBA\uFF0C\n\u5219\u56DE\u590D40\u70B9\u6CD5\u529B\u503C\n\u548C20\u70B9hp"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}
   m_sharedMaterial: {fileID: 5405361247077733778, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}

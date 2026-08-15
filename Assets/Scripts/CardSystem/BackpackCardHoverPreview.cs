@@ -26,7 +26,7 @@ public class BackpackCardHoverPreview : MonoBehaviour, IPointerEnterHandler, IPo
         string prefabName = cardData.cardName;
         if (string.IsNullOrEmpty(prefabName)) return;
 
-        GameObject prefab = Resources.Load<GameObject>("CardPrefabs/" + prefabName);
+        GameObject prefab = CardResourceUtility.LoadCardPrefab(cardData);
         if (prefab == null) return;
 
         Transform parent = stagePreviewParent;
@@ -42,6 +42,16 @@ public class BackpackCardHoverPreview : MonoBehaviour, IPointerEnterHandler, IPo
             previewInstance.transform.position = new Vector3(4.01f, -0.93f, 0f);
             previewInstance.transform.localScale = new Vector3(0.5f, 0.5f, 1f);
         }
+
+        InitializePreviewDisplay();
+    }
+
+    void InitializePreviewDisplay()
+    {
+        if (previewInstance == null) return;
+
+        CardDisplayBase display = previewInstance.GetComponent<CardDisplayBase>();
+        if (display != null) display.Setup(cardData);
     }
 
     void HidePreview()
@@ -58,4 +68,3 @@ public class BackpackCardHoverPreview : MonoBehaviour, IPointerEnterHandler, IPo
         HidePreview();
     }
 }
-

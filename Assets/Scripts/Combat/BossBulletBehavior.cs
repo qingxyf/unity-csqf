@@ -5,7 +5,6 @@ public class BossBulletBehavior : MonoBehaviour
     [SerializeField] private float speed = 5f;  // 子弹速度
     private Vector2 direction;  // 子弹移动方向
     private Rigidbody2D rb;
-    [SerializeField] private float destroyDistance = 20f;  // 超出屏幕多远后销毁
 
     void Start()
     {
@@ -54,4 +53,4 @@ public class BossBulletBehavior : MonoBehaviour
     {
         direction = newDirection.normalized;
     }
-} 
+}

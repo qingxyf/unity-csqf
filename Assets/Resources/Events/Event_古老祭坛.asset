@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7e979fbed34413468065a17cf115b77, type: 3}
+  m_Name: "古老祭坛"
+  m_EditorClassIdentifier: 
+  eventName: "古老祭坛"
+  description: "你发现了一座被藤蔓缠绕的祭坛。符文微微发亮，像是在等待献祭。"
+  illustration: {fileID: 21300000, guid: 8ade7a62e9d4455ba95f36ec37968430, type: 3}
+  choices:
+  - buttonText: "献上鲜血"
+    resultDescription: "符文吸收了鲜血，一股古老的力量强化了你的生命根基。"
+    healthChange: -15
+    maxHealthChange: 10
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+  - buttonText: "祈祷"
+    resultDescription: "温暖的光芒笼罩了你，伤口正在愈合。"
+    healthChange: 30
+    maxHealthChange: 0
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+  - buttonText: "离开"
+    resultDescription: "你没有触碰祭坛，继续前进。"
+    healthChange: 0
+    maxHealthChange: 0
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0

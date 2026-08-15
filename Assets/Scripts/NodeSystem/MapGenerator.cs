@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,20 +5,26 @@ public class MapGenerator : MonoBehaviour
 {
     public GameObject nodeTemplate;
     public Transform mapContainer;
-    
-    public int totalDepth = 10; // 总深度（不包括Boss节点）
+
+    [Header("地图结构")]
+    public int totalDepth = 10;
+    public int nodesPerLayer = 3;         // 每层固定节点数
     public float horizontalSpacing = 2.0f;
     public float verticalSpacing = 1.5f;
-    public float generatedNodeScale = 0.8f; // 重命名变量以强制刷新Inspector缓存
-    public Vector2 nodeColliderOffset = new Vector2(0, 3f); // 新增：节点碰撞体偏移，默认向上0.5
-    public int visibleDepthAhead = 2; // 当前节点之后可见的深度
-    
-    private List<List<Node>> nodesByDepth = new List<List<Node>>();
-    private Node campNode;
-    private Node bossNode;
-    private int currentDepth = 0; // 当前深度
-    
-    public NodeVisualizer nodeVisualizer; // 添加这一行
+    public float generatedNodeScale = 0.8f;
+    public Vector2 nodeColliderOffset = Vector2.zero;
+    public int visibleDepthAhead = 2;
+
+    [Header("节点类型权重")]
+    public float battleWeight = 35f;
+    public float eventWeight = 25f;
+    public float shopWeight = 10f;
+    public float treasureWeight = 15f;
+    public float eliteBattleWeight = 10f;
+    public float campWeight = 5f;
+
+    [Header("可视化")]
+    public NodeVisualizer nodeVisualizer;
 
     [System.Serializable]
     public struct NodeIconConfig
@@ -27,228 +32,280 @@ public class MapGenerator : MonoBehaviour
         public NodeType type;
         public Sprite icon;
     }
+    public List<NodeIconConfig> nodeIcons;
 
-    public List<NodeIconConfig> nodeIcons; // 在 Inspector 中配置图标映射
-    
+    private List<List<Node>> nodesByDepth = new List<List<Node>>();
+    private int currentDepth = 0;
+
+    public List<List<Node>> GetNodesByDepth() => nodesByDepth;
+
     public void GenerateMap()
     {
         ClearExistingMap();
-        
-        // 创建节点列表，按深度组织
+
         for (int i = 0; i <= totalDepth + 1; i++)
-        {
             nodesByDepth.Add(new List<Node>());
-        }
-        
-        // 创建营地节点（深度0）
-        campNode = CreateNode(NodeType.Camp, 0, new Vector2(0, 0));
+
+        // === 深度0：营地（起点） ===
+        Node campNode = CreateNode(NodeType.Camp, 0, new Vector2(0, 0));
         nodesByDepth[0].Add(campNode);
-        
-        // 创建第一层节点（两条分支）
-        Node leftPath = CreateNode(NodeType.Event, 1, new Vector2(-horizontalSpacing, verticalSpacing));
-        Node rightPath = CreateNode(NodeType.Battle, 1, new Vector2(horizontalSpacing, verticalSpacing));
-        
-        nodesByDepth[1].Add(leftPath);
-        nodesByDepth[1].Add(rightPath);
-        
-        // 连接营地到第一层节点
-        ConnectNodes(campNode, leftPath);
-        ConnectNodes(campNode, rightPath);
-        
-        // 生成中间层节点（深度2到totalDepth）
-        for (int depth = 1; depth < totalDepth; depth++)
+
+        // === 深度1 ~ totalDepth：中间层 ===
+        for (int depth = 1; depth <= totalDepth; depth++)
         {
-            List<Node> currentDepthNodes = nodesByDepth[depth];
-            
-            foreach (Node parentNode in currentDepthNodes)
+            int nodeCount = nodesPerLayer;
+
+            // 特殊层：每3层保证有一个商店，每5层有精英战
+            bool forceShop = (depth % 3 == 0);
+            bool forceElite = (depth % 5 == 0);
+            // Boss前一层强制营地休息
+            bool forceCamp = (depth == totalDepth);
+
+            for (int i = 0; i < nodeCount; i++)
             {
-                // 为每个父节点创建1-2个子节点（改为1-2个）
-                int childCount = Random.Range(1, 3); // 1到2个子节点
-                
-                for (int i = 0; i < childCount; i++)
+                NodeType type;
+
+                if (forceCamp && i == nodeCount / 2)
+                    type = NodeType.Camp;
+                else if (forceShop && i == 0)
+                    type = NodeType.Shop;
+                else if (forceElite && i == nodeCount - 1)
+                    type = NodeType.EliteBattle;
+                else
+                    type = GetWeightedRandomType();
+
+                float xOffset = (i - (nodeCount - 1) / 2f) * horizontalSpacing;
+                // 加一点随机偏移，让地图不那么死板
+                xOffset += Random.Range(-0.3f, 0.3f);
+
+                Vector2 pos = new Vector2(xOffset, depth * verticalSpacing);
+                Node node = CreateNode(type, depth, pos);
+                nodesByDepth[depth].Add(node);
+            }
+
+            // 连接上一层到当前层
+            ConnectLayers(nodesByDepth[depth - 1], nodesByDepth[depth]);
+        }
+
+        // === 最终层：Boss ===
+        Vector2 bossPos = new Vector2(0, (totalDepth + 1) * verticalSpacing);
+        Node bossNode = CreateNode(NodeType.Boss, totalDepth + 1, bossPos);
+        nodesByDepth[totalDepth + 1].Add(bossNode);
+
+        // 所有最后一层节点连接到Boss
+        foreach (Node node in nodesByDepth[totalDepth])
+            ConnectNodes(node, bossNode);
+
+        // 初始状态
+        campNode.isActive = true;
+        campNode.UpdateVisuals();
+        currentDepth = 0;
+
+        UpdateNodeVisibility();
+
+        if (nodeVisualizer != null)
+            nodeVisualizer.VisualizeConnections(nodesByDepth);
+    }
+
+    /// <summary>
+    /// 连接两层节点：保证每个父节点至少连1个子节点，每个子节点至少被1个父节点连接。
+    /// 避免出现孤立节点或断路。
+    /// </summary>
+    private void ConnectLayers(List<Node> parents, List<Node> children)
+    {
+        if (parents.Count == 0 || children.Count == 0) return;
+
+        // 第一步：每个父节点至少连一个最近的子节点
+        foreach (Node parent in parents)
+        {
+            Node closest = null;
+            float minDist = float.MaxValue;
+
+            foreach (Node child in children)
+            {
+                float dist = Mathf.Abs(parent.position.x - child.position.x);
+                if (dist < minDist)
                 {
-                    // 随机选择节点类型（除了Camp和Boss）
-                    NodeType randomType = GetRandomNodeType();
-                    
-                    // 计算子节点位置
-                    float xOffset = (i - (childCount - 1) / 2.0f) * horizontalSpacing;
-                    Vector2 childPos = new Vector2(
-                        parentNode.position.x + xOffset,
-                        parentNode.position.y + verticalSpacing
-                    );
-                    
-                    Node childNode = CreateNode(randomType, depth + 1, childPos);
-                    nodesByDepth[depth + 1].Add(childNode);
-                    
-                    // 连接父节点和子节点
-                    ConnectNodes(parentNode, childNode);
+                    minDist = dist;
+                    closest = child;
+                }
+            }
+
+            if (closest != null)
+                ConnectNodes(parent, closest);
+        }
+
+        // 第二步：检查是否有子节点没有被任何父节点连接
+        foreach (Node child in children)
+        {
+            bool hasParent = false;
+            foreach (Node parent in parents)
+            {
+                if (parent.nextNodes.Contains(child))
+                {
+                    hasParent = true;
+                    break;
+                }
+            }
+
+            if (!hasParent)
+            {
+                // 找最近的父节点连上
+                Node closest = null;
+                float minDist = float.MaxValue;
+                foreach (Node parent in parents)
+                {
+                    float dist = Mathf.Abs(parent.position.x - child.position.x);
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        closest = parent;
+                    }
+                }
+                if (closest != null)
+                    ConnectNodes(closest, child);
+            }
+        }
+
+        // 第三步：额外随机连接（让路线更丰富，约30%概率额外连一条）
+        foreach (Node parent in parents)
+        {
+            foreach (Node child in children)
+            {
+                if (!parent.nextNodes.Contains(child))
+                {
+                    float dist = Mathf.Abs(parent.position.x - child.position.x);
+                    if (dist <= horizontalSpacing * 1.2f && Random.value < 0.3f)
+                    {
+                        ConnectNodes(parent, child);
+                    }
                 }
             }
         }
-        
-        // 创建Boss节点（最后一层）
-        Vector2 bossPosition = new Vector2(0, (totalDepth + 1) * verticalSpacing);
-        bossNode = CreateNode(NodeType.Boss, totalDepth + 1, bossPosition);
-        nodesByDepth[totalDepth + 1].Add(bossNode);
-        
-        // 连接最后一层节点到Boss节点
-        foreach (Node node in nodesByDepth[totalDepth])
-        {
-            ConnectNodes(node, bossNode);
-        }
-        
-        // 初始化节点状态
-        campNode.isActive = true;
-        campNode.UpdateVisuals(); // <--- 修复：强制刷新营地节点的视觉状态，让它变亮
-        currentDepth = 0;
-        
-        // 更新节点可见性
-        UpdateNodeVisibility();
-        
-        // 在地图生成完成后，调用可视化方法
-        if (nodeVisualizer != null)
-        {
-            nodeVisualizer.VisualizeConnections(nodesByDepth);
-        }
     }
-    
-    // 更新节点可见性
-    public void UpdateNodeVisibility()
+
+    private NodeType GetWeightedRandomType()
     {
-        // 隐藏所有节点
-        for (int depth = 0; depth <= totalDepth + 1; depth++)
-        {
-            foreach (Node node in nodesByDepth[depth])
-            {
-                node.gameObject.SetActive(false);
-            }
-        }
-        
-        // 显示当前深度和之后visibleDepthAhead层的节点
-        int maxVisibleDepth = Mathf.Min(currentDepth + visibleDepthAhead, totalDepth + 1);
-        
-        for (int depth = currentDepth; depth <= maxVisibleDepth; depth++)
-        {
-            foreach (Node node in nodesByDepth[depth])
-            {
-                node.gameObject.SetActive(true);
-            }
-        }
-        
-        // 更新可视化连接
-        if (nodeVisualizer != null)
-        {
-            nodeVisualizer.VisualizeConnections(nodesByDepth);
-        }
+        float total = battleWeight + eventWeight + shopWeight + treasureWeight + eliteBattleWeight + campWeight;
+        float roll = Random.Range(0, total);
+
+        if (roll < battleWeight) return NodeType.Battle;
+        roll -= battleWeight;
+        if (roll < eventWeight) return NodeType.Event;
+        roll -= eventWeight;
+        if (roll < treasureWeight) return NodeType.Treasure;
+        roll -= treasureWeight;
+        if (roll < shopWeight) return NodeType.Shop;
+        roll -= shopWeight;
+        if (roll < eliteBattleWeight) return NodeType.EliteBattle;
+        return NodeType.Camp;
     }
-    
-    // 移动到下一个节点
+
+    // === 节点移动 ===
+
     public void MoveToNode(Node targetNode)
     {
-        if (targetNode == null || !targetNode.isActive)
-            return;
-            
-        // 更新当前深度
+        if (targetNode == null || !targetNode.isActive) return;
+
         currentDepth = targetNode.depth;
-        
-        // 更新节点状态
-        foreach (int depth in new[] { currentDepth - 1, currentDepth })
+
+        // 当前层和之前的层全部设为非活跃
+        for (int d = 0; d <= currentDepth; d++)
         {
-            if (depth < 0) continue;
-            
-            foreach (Node node in nodesByDepth[depth])
+            foreach (Node node in nodesByDepth[d])
             {
                 node.isActive = false;
+                node.UpdateVisuals();
             }
         }
-        
-        // 设置下一层节点为活跃
+
+        // 目标节点标记为已完成（视觉上变灰）
+        targetNode.isCompleted = true;
+        targetNode.UpdateVisuals();
+
+        // 下一层节点中，只有被目标节点连接的才激活
         foreach (Node nextNode in targetNode.nextNodes)
         {
             nextNode.isActive = true;
+            nextNode.UpdateVisuals();
         }
-        
-        // 更新节点可见性
+
         UpdateNodeVisibility();
     }
-    
-    private NodeType GetRandomNodeType()
+
+    // === 可见性管理 ===
+
+    public void UpdateNodeVisibility()
     {
-        // 随机选择节点类型，排除Camp和Boss
-        NodeType[] types = {
-            NodeType.Event, 
-            NodeType.Battle, 
-            NodeType.Treasure, 
-            NodeType.Shop, 
-            NodeType.EliteBattle
-        };
-        
-        return types[Random.Range(0, types.Length)];
+        for (int depth = 0; depth <= totalDepth + 1; depth++)
+        {
+            foreach (Node node in nodesByDepth[depth])
+                node.gameObject.SetActive(false);
+        }
+
+        int maxVisible = Mathf.Min(currentDepth + visibleDepthAhead, totalDepth + 1);
+        for (int depth = Mathf.Max(0, currentDepth - 1); depth <= maxVisible; depth++)
+        {
+            foreach (Node node in nodesByDepth[depth])
+                node.gameObject.SetActive(true);
+        }
+
+        if (nodeVisualizer != null)
+            nodeVisualizer.VisualizeConnections(nodesByDepth);
     }
-    
+
+    public void ReopenMap()
+    {
+        if (mapContainer != null)
+        {
+            mapContainer.gameObject.SetActive(true);
+            UpdateNodeVisibility();
+        }
+    }
+
+    // === 工具方法 ===
+
     private Node CreateNode(NodeType type, int depth, Vector2 position)
     {
         GameObject nodeObj = Instantiate(nodeTemplate, mapContainer);
         nodeObj.transform.position = new Vector3(position.x, position.y, 0);
-        nodeObj.transform.localScale = new Vector3(generatedNodeScale, generatedNodeScale, 1f); // 应用缩放
-        
+        nodeObj.transform.localScale = new Vector3(generatedNodeScale, generatedNodeScale, 1f);
+
         Node node = nodeObj.GetComponent<Node>();
-        if (node == null)
-        {
-            node = nodeObj.AddComponent<Node>();
-        }
-        
-        node.SetColliderOffset(nodeColliderOffset); // 应用碰撞体偏移
+        if (node == null) node = nodeObj.AddComponent<Node>();
+
+        node.SetColliderOffset(nodeColliderOffset);
         node.Initialize(type, depth);
         node.position = position;
 
-        // 设置节点图标
         Sprite icon = GetIconForType(type);
-        if (icon != null)
-        {
-            node.SetIcon(icon);
-        }
+        if (icon != null) node.SetIcon(icon);
+        if (node.iconRenderer != null) node.iconRenderer.sortingOrder = 3;
 
-        // 强制设置图标层级顺序为 3
-        if (node.iconRenderer != null)
-        {
-            node.iconRenderer.sortingOrder = 3;
-        }
-        
-        // 根据节点类型命名
         nodeObj.name = $"Node_{type}_{depth}_{nodesByDepth[depth].Count}";
-        
         return node;
     }
 
     private Sprite GetIconForType(NodeType type)
     {
         if (nodeIcons == null) return null;
-        
         foreach (var config in nodeIcons)
         {
-            if (config.type == type)
-            {
-                return config.icon;
-            }
+            if (config.type == type) return config.icon;
         }
         return null;
     }
-    
+
     private void ConnectNodes(Node parent, Node child)
     {
         if (!parent.nextNodes.Contains(child))
-        {
             parent.nextNodes.Add(child);
-        }
     }
-    
+
     private void ClearExistingMap()
     {
-        // 清除现有地图
         nodesByDepth.Clear();
-        
-        // 保存背景图片（假设它是第一个子物体或名称包含"Background"）
+
         Transform background = null;
         for (int i = 0; i < mapContainer.childCount; i++)
         {
@@ -260,29 +317,11 @@ public class MapGenerator : MonoBehaviour
                 break;
             }
         }
-        
-        // 删除所有子物体
+
         while (mapContainer.childCount > 0)
-        {
             DestroyImmediate(mapContainer.GetChild(0).gameObject);
-        }
-        
-        // 恢复背景图片
+
         if (background != null)
-        {
             background.SetParent(mapContainer);
-        }
-    }
-    
-    // 重新打开地图界面
-    public void ReopenMap()
-    {
-        if (mapContainer != null)
-        {
-            mapContainer.gameObject.SetActive(true);
-            
-            // 更新节点可见性
-            UpdateNodeVisibility();
-        }
     }
 }

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
+  m_Name: 残魂汲取
+  m_EditorClassIdentifier: 
+  cardName: 残魂汲取
+  element: 4
+  description: 造成40点暗影伤害，目标每有1个负面效果额外+6，回复一半伤害
+  cost: 4
+  cardArt: {fileID: 0}
+  effectId: 残魂汲取
+  effect: {fileID: 0}

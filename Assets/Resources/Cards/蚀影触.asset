@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
+  m_Name: 蚀影触
+  m_EditorClassIdentifier: 
+  cardName: 蚀影触
+  element: 4
+  description: 造成12点暗影伤害并施加[腐蚀]，若目标已有[腐蚀]，额外失去8生命
+  cost: 1
+  cardArt: {fileID: 0}
+  effectId: 蚀影触
+  effect: {fileID: 0}

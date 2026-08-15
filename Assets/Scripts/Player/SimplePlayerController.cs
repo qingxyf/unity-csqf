@@ -1,7 +1,8 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections;
-using TMPro;  // 添加UI支持
-using UnityEngine.SceneManagement;  // 添加场景管理支持
+using TMPro;
+using UnityEngine.SceneManagement;
 
 public class SimplePlayerController : MonoBehaviour
 {
@@ -25,12 +26,17 @@ public class SimplePlayerController : MonoBehaviour
     private bool canShoot = true;  // 是否可以射击
 
     [Header("UI设置")]
-    [SerializeField] private GameObject victoryPanel;  // 胜利面板
+    [SerializeField] private GameObject victoryPanel;
+    [SerializeField] private Image healthBarFill;        // 玩家血条填充图
+    [SerializeField] private Image bossHealthBarFill;    // Boss血条填充图（可选）
+    private int maxBossHealth;
 
     void Start()
     {
         currentHealth = maxHealth;
+        maxBossHealth = bossHealth;
         UpdateBossHealthDisplay();
+        UpdatePlayerHealthBar();
 
         // 检查是否已设置子弹预制体
         if (bulletPrefab == null)
@@ -92,12 +98,13 @@ public class SimplePlayerController : MonoBehaviour
     public void OnBossHit()
     {
         bossHealth--;
-        
+        hitCount++;
+
         UpdateBossHealthDisplay();
-        
-        if (hitCount >= bossHealth)
+
+        if (bossHealth <= 0)
         {
-            ShowVictoryPanel();  // 显示胜利面板
+            ShowVictoryPanel();
         }
     }
 
@@ -105,14 +112,19 @@ public class SimplePlayerController : MonoBehaviour
     {
         if (bossHealthText != null)
         {
-            if (bossHealth < 100)
-            {
+            if (bossHealth > 0)
                 bossHealthText.text = "BossHP:" + bossHealth;
-            }
             else
-            {
-                bossHealthText.text = "";  // 血量大于等于10时不显示
-            }
+                bossHealthText.text = "";
+        }
+
+        if (bossHealthBarFill != null)
+        {
+            float ratio = Mathf.Clamp01((float)bossHealth / maxBossHealth);
+            bossHealthBarFill.fillAmount = ratio;
+
+            // Boss血条：红色渐深
+            bossHealthBarFill.color = Color.Lerp(Color.red, new Color(0.8f, 0.2f, 0.2f), ratio);
         }
     }
 
@@ -130,21 +142,37 @@ public class SimplePlayerController : MonoBehaviour
     public void ReturnToStartScene()
     {
         Time.timeScale = 1f;  // 恢复游戏时间
-        SceneManager.LoadScene("Start");  // 切换到开始场景
+        SceneManager.LoadScene("start");  // 切换到开始场景
     }
 
     public void TakeDamage(int damage)
     {
         currentHealth -= damage;
+        UpdatePlayerHealthBar();
         if (currentHealth <= 0)
         {
             Die();
         }
     }
 
+    private void UpdatePlayerHealthBar()
+    {
+        if (healthBarFill != null)
+        {
+            float ratio = Mathf.Clamp01((float)currentHealth / maxHealth);
+            healthBarFill.fillAmount = ratio;
+
+            // 血量颜色渐变：绿 → 黄 → 红
+            if (ratio > 0.5f)
+                healthBarFill.color = Color.Lerp(Color.yellow, Color.green, (ratio - 0.5f) * 2f);
+            else
+                healthBarFill.color = Color.Lerp(Color.red, Color.yellow, ratio * 2f);
+        }
+    }
+
     private void Die()
     {
-        SceneManager.LoadScene("Start");
+        SceneManager.LoadScene("start");
     }
 
     private void OnTriggerEnter2D(Collider2D other)

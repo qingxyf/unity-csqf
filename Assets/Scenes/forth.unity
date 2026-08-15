@@ -3182,12 +3182,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b764d555aa3affa43ad2b69a94d206a0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  eventContentPrefab: {fileID: 0}
-  battleContentPrefab: {fileID: 0}
-  treasureContentPrefab: {fileID: 0}
-  shopContentPrefab: {fileID: 0}
-  eliteBattleContentPrefab: {fileID: 0}
-  bossContentPrefab: {fileID: 0}
+  eventContentPrefab: {fileID: 6837807612279616512, guid: 835ce3e50ff34f74abbb3f9f1f0824ac, type: 3}
+  battleContentPrefab: {fileID: 4869977227748124672, guid: 48a8702d78044a48a77e1038d7439f13, type: 3}
+  treasureContentPrefab: {fileID: 8294085887340577792, guid: a3ac781b7d15490293ebdad4be892794, type: 3}
+  shopContentPrefab: {fileID: 6918456390003843072, guid: 06fa5aa6bbff4f91a4aa01b047c042b3, type: 3}
+  eliteBattleContentPrefab: {fileID: 2377779163980794880, guid: faa6c5dd704240f791d104a7b9f3ba10, type: 3}
+  bossContentPrefab: {fileID: 2883727653516873216, guid: e72df1c80d9744308692c73d0339d7a0, type: 3}
   campContentPrefab: {fileID: 203379681421552594, guid: b01a63f01f36e4a4daefe07811826adf, type: 3}
 --- !u!114 &2035615801
 MonoBehaviour:
@@ -3227,7 +3227,7 @@ MonoBehaviour:
   horizontalSpacing: 2
   verticalSpacing: 1.5
   generatedNodeScale: 0.8
-  nodeColliderOffset: {x: 0, y: 4}
+  nodeColliderOffset: {x: 0, y: 0}
   visibleDepthAhead: 2
   nodeVisualizer: {fileID: 2035615799}
   nodeIcons:

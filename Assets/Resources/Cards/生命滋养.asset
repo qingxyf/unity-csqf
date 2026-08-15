@@ -14,6 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardName: "\u751F\u547D\u6ECB\u517B"
   element: 2
-  description: "\u6700\u5927\u751F\u547D\u503C+10\uFF0C\u56DE\u590D\u81EA\u5DF1 35HP"
+  description: "\u6700\u5927\u751F\u547D\u503C+10\uFF0C\u56DE\u590D\u81EA\u5DF1 35\u751F\u547D"
   cost: 1
   effectId: 

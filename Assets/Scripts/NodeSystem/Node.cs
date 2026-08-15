@@ -1,219 +1,169 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public enum NodeType
 {
-    Camp,       // 营地节点
-    Event,      // 事件节点
-    Battle,     // 战斗节点
-    Treasure,   // 宝藏节点
-    Shop,       // 商店节点
-    EliteBattle,// 劲敌节点
-    Boss        // Boss节点
+    Camp,
+    Event,
+    Battle,
+    Treasure,
+    Shop,
+    EliteBattle,
+    Boss
 }
 
 public class Node : MonoBehaviour
 {
     public NodeType type;
     public List<Node> nextNodes = new List<Node>();
-    public int depth; // 节点深度，从0开始
-    
-    public Vector2 position; // 节点在地图上的位置
-    
-    // 节点的视觉表现
+    public int depth;
+    public Vector2 position;
     public SpriteRenderer iconRenderer;
-    
-    // 节点激活状态
+
     public bool isActive = false;
     public bool isCompleted = false;
 
-    // 碰撞体偏移
     public Vector2 colliderOffset = Vector2.zero;
-    
+
     private MapGenerator mapGenerator;
-    
+    private const float ColliderPadding = 0.05f;
+
     private void Awake()
     {
-        // 获取MapGenerator引用
         mapGenerator = FindObjectOfType<MapGenerator>();
-        
-        // 自动获取或添加 SpriteRenderer
+
         if (iconRenderer == null)
         {
             iconRenderer = GetComponent<SpriteRenderer>();
-            if (iconRenderer == null)
-            {
-                // 如果自身没有，尝试在子物体里找（以防你的图片是子物体）
-                iconRenderer = GetComponentInChildren<SpriteRenderer>();
-            }
-            
-            // 如果还是没有，就给自己加一个
-            if (iconRenderer == null)
-            {
-                iconRenderer = gameObject.AddComponent<SpriteRenderer>();
-            }
+            if (iconRenderer == null) iconRenderer = GetComponentInChildren<SpriteRenderer>();
+            if (iconRenderer == null) iconRenderer = gameObject.AddComponent<SpriteRenderer>();
         }
-        
-        // 添加碰撞器（如果没有）
+
         Collider2D col = GetComponent<Collider2D>();
-        if (col == null)
-        {
-            col = gameObject.AddComponent<CircleCollider2D>();
-        }
-        
-        // 应用初始偏移
-        SetColliderOffset(colliderOffset);
+        if (col == null) col = gameObject.AddComponent<CircleCollider2D>();
+
+        RefreshColliderBounds();
+        UpdateColliderInteractionState();
     }
-    
-    // 设置碰撞体偏移
+
     public void SetColliderOffset(Vector2 offset)
     {
         this.colliderOffset = offset;
+        RefreshColliderBounds();
+    }
+
+    private void RefreshColliderBounds()
+    {
         Collider2D col = GetComponent<Collider2D>();
-        
-        if (col != null)
+        if (col == null) return;
+
+        Vector2 offset = colliderOffset;
+        Vector2 localSize = Vector2.zero;
+
+        if (iconRenderer != null && iconRenderer.sprite != null)
         {
-            if (col is CircleCollider2D circleCol)
-            {
-                circleCol.offset = offset;
-            }
-            else if (col is BoxCollider2D boxCol)
-            {
-                boxCol.offset = offset;
-            }
-            else if (col is CapsuleCollider2D capsuleCol)
-            {
-                capsuleCol.offset = offset;
-            }
+            Bounds bounds = iconRenderer.bounds;
+            offset += (Vector2)transform.InverseTransformPoint(bounds.center);
+            localSize = new Vector2(
+                bounds.size.x / SafeScale(transform.lossyScale.x),
+                bounds.size.y / SafeScale(transform.lossyScale.y));
+        }
+
+        if (col is CircleCollider2D circleCol)
+        {
+            circleCol.offset = offset;
+            if (localSize != Vector2.zero)
+                circleCol.radius = Mathf.Max(localSize.x, localSize.y) * 0.5f + ColliderPadding;
+        }
+        else if (col is BoxCollider2D boxCol)
+        {
+            boxCol.offset = offset;
+            if (localSize != Vector2.zero)
+                boxCol.size = localSize + Vector2.one * (ColliderPadding * 2f);
+        }
+        else if (col is CapsuleCollider2D capsuleCol)
+        {
+            capsuleCol.offset = offset;
+            if (localSize != Vector2.zero)
+                capsuleCol.size = localSize + Vector2.one * (ColliderPadding * 2f);
         }
     }
-    
-    // 初始化节点
+
+    private static float SafeScale(float scale)
+    {
+        return Mathf.Approximately(scale, 0f) ? 1f : Mathf.Abs(scale);
+    }
+
+    private void UpdateColliderInteractionState()
+    {
+        Collider2D col = GetComponent<Collider2D>();
+        if (col != null)
+            col.enabled = isActive && !isCompleted;
+    }
+
     public virtual void Initialize(NodeType nodeType, int nodeDepth)
     {
         type = nodeType;
         depth = nodeDepth;
-        
-        // UpdateVisuals 会在 MapGenerator 设置完 Sprite 后再次被调用以调整颜色
         UpdateVisuals();
     }
 
-    // 设置节点的图标图片
     public void SetIcon(Sprite sprite)
     {
         if (iconRenderer != null && sprite != null)
         {
             iconRenderer.sprite = sprite;
+            RefreshColliderBounds();
         }
     }
-    
-    // 更新节点视觉效果
+
     public virtual void UpdateVisuals()
     {
-        // 根据节点类型设置不同的图标
-        // 这里需要根据实际资源进行设置
-        
-        // 根据激活状态更新视觉效果
-        if (iconRenderer != null)
-        {
-            // 激活状态显示正常颜色
-            if (isActive)
-            {
-                iconRenderer.color = Color.white;
-            }
-            // 完成状态显示灰色
-            else if (isCompleted)
-            {
-                iconRenderer.color = Color.gray;
-            }
-            // 未激活状态显示半透明
-            else
-            {
-                Color color = iconRenderer.color;
-                color.a = 0.5f;
-                iconRenderer.color = color;
-            }
-        }
-    }
-    
-    // 玩家进入节点时触发
-    public virtual void OnEnter()
-    {
-        isActive = true;
-        // 根据节点类型触发不同的事件
-    }
-    
-    // 玩家完成节点时触发
-    public virtual void OnComplete()
-    {
-        isCompleted = true;
-        isActive = false;
-        
-        // 激活下一个可选节点
-        foreach (Node node in nextNodes)
-        {
-            node.isActive = true;
-        }
-        
-        // 更新视觉效果
-        UpdateVisuals();
-    }
-    
-    // 处理鼠标点击
-    private void OnMouseDown()
-    {
-        if (isActive && !isCompleted && mapGenerator != null)
-        {
-            // 触发移动动画和背景滚动
-            AnimationSwitcher animSwitcher = FindObjectOfType<AnimationSwitcher>();
-            if (animSwitcher != null)
-            {
-                animSwitcher.PlayAnimation2();
-            }
+        if (iconRenderer == null) return;
 
-            InfiniteBackgroundScroller scroller = FindObjectOfType<InfiniteBackgroundScroller>();
-            if (scroller != null)
-            {
-                scroller.StartScrolling();
-            }
-
-            // 调用MapGenerator的MoveToNode方法
-            mapGenerator.MoveToNode(this);
-            
-            // 触发节点进入事件
-            OnEnter();
-            
-            // 触发节点完成事件
-            OnComplete();
-            
-            // 暂时关闭地图界面
-            if (mapGenerator.mapContainer != null)
-            {
-                mapGenerator.mapContainer.gameObject.SetActive(false);
-            }
-            
-            // 根据节点类型触发相应的内容
-            TriggerNodeContent();
-        }
-    }
-    
-    // 触发节点内容
-    private void TriggerNodeContent()
-    {
-        // 查找场景中的NodeContentManager
-        NodeContentManager contentManager = FindObjectOfType<NodeContentManager>();
-        
-        if (contentManager != null)
-        {
-            contentManager.LoadNodeContent(type);
-        }
+        if (isActive)
+            iconRenderer.color = Color.white;
+        else if (isCompleted)
+            iconRenderer.color = Color.gray;
         else
         {
-            Debug.LogError("Node: 未找到 NodeContentManager！");
+            Color color = iconRenderer.color;
+            color.a = 0.5f;
+            iconRenderer.color = color;
         }
-        
-        // 保留原有的Log以便调试
-        Debug.Log($"进入节点: {type}");
+
+        UpdateColliderInteractionState();
+    }
+
+    /// <summary>
+    /// 点击节点：只负责通知 GameManager，不自行处理逻辑
+    /// </summary>
+    private void OnMouseDown()
+    {
+        if (IsPointerOverGameObject()) return;
+        if (!isActive || isCompleted) return;
+
+        GameManager gm = FindObjectOfType<GameManager>();
+        if (gm != null)
+        {
+            gm.SelectNode(this);
+        }
+    }
+
+    private static bool IsPointerOverGameObject()
+    {
+        if (EventSystem.current == null) return false;
+
+        for (int i = 0; i < Input.touchCount; i++)
+        {
+            Touch touch = Input.GetTouch(i);
+            if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled) continue;
+
+            if (EventSystem.current.IsPointerOverGameObject(touch.fingerId))
+                return true;
+        }
+
+        return EventSystem.current.IsPointerOverGameObject();
     }
 }
