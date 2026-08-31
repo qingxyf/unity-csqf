@@ -20,7 +20,9 @@ public abstract class CardDisplayBase : MonoBehaviour
 
         if (nameText != null)
         {
-            nameText.text = cardData.cardName;
+            nameText.text = cardData.upgradeLevel > 0
+                ? $"{cardData.cardName}  <color=#f7d774>+{cardData.upgradeLevel}</color>"
+                : cardData.cardName;
         }
 
         if (descriptionText != null)

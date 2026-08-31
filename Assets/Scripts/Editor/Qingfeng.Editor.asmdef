@@ -1,5 +1,5 @@
 {
-    "name": "Project.EditModeTests",
+    "name": "Qingfeng.Editor",
     "rootNamespace": "",
     "references": [
         "GUID:7c4f6f2cbf1a4f4d9d695d8596ce1b72"
@@ -14,8 +14,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false,
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ]
+    "noEngineReferences": false
 }

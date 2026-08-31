@@ -1,4 +1,3 @@
-#if ROGUELIKE_V02_RULES_TESTS
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
@@ -558,4 +557,3 @@ public class RoguelikeV02RulesTests
             Object.DestroyImmediate(gameObject);
     }
 }
-#endif

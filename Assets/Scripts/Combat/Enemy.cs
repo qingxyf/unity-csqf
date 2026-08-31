@@ -17,6 +17,7 @@ public class Enemy : MonoBehaviour, IDamageable
     public GameObject statusIconContainer;
 
     private List<StatusEffect> activeEffects = new List<StatusEffect>();
+    private bool healthInitialized;
 
     public DamageType lastDamageType = DamageType.Physical;
     public bool spreadDamageToNeighbors = false;
@@ -39,11 +40,21 @@ public class Enemy : MonoBehaviour, IDamageable
     private void Start()
     {
         currentHealth = maxHealth;
+        healthInitialized = true;
         UpdateUI();
+    }
+
+    private void EnsureHealthInitialized()
+    {
+        if (healthInitialized) return;
+        if (currentHealth <= 0)
+            currentHealth = maxHealth;
+        healthInitialized = true;
     }
 
     public void TakeDamage(int damage, DamageType type = DamageType.Physical)
     {
+        EnsureHealthInitialized();
         TakeDamageInternal(damage, type, false);
     }
 
@@ -226,9 +237,17 @@ public class Enemy : MonoBehaviour, IDamageable
         }
     }
 
-    public int GetCurrentHealth() => currentHealth;
+    public int GetCurrentHealth()
+    {
+        EnsureHealthInitialized();
+        return currentHealth;
+    }
     public int GetMaxHealth() => maxHealth;
-    public bool IsDead() => currentHealth <= 0;
+    public bool IsDead()
+    {
+        EnsureHealthInitialized();
+        return currentHealth <= 0;
+    }
 
     public bool HasStatus(StatusType type)
     {
@@ -324,7 +343,10 @@ public class Enemy : MonoBehaviour, IDamageable
             DeckManager.Instance.OnEnemyDied();
         }
 
-        Destroy(gameObject);
+        if (Application.isPlaying)
+            Destroy(gameObject);
+        else
+            DestroyImmediate(gameObject);
     }
 
     private void RemoveRandomBuff()

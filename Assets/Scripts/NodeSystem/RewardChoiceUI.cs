@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class RewardChoiceUI : MonoBehaviour
+public class RewardChoiceUI : NodeContentController
 {
     [Header("Reward Settings")]
     public int choiceCount = 3;
@@ -50,8 +50,11 @@ public class RewardChoiceUI : MonoBehaviour
 
         if (choices.Count == 0)
         {
-            DeckManager.Instance.DrawFromHiddenPool(1);
-            CompleteNode();
+            if (TryBeginCompletion())
+            {
+                DeckManager.Instance.DrawFromHiddenPool(1);
+                CompleteNode();
+            }
             return;
         }
 
@@ -84,6 +87,8 @@ public class RewardChoiceUI : MonoBehaviour
 
     private void PickSingleCard(CardData card)
     {
+        if (!TryBeginCompletion()) return;
+
         if (!DeckManager.Instance.TakeCardFromHiddenPool(card))
             DeckManager.Instance.AddCardToBackpack(card);
 
@@ -127,6 +132,8 @@ public class RewardChoiceUI : MonoBehaviour
             return;
         }
 
+        if (!TryBeginCompletion()) return;
+
         if (skipHealAmount > 0 && PlayerStats.Instance != null)
             PlayerStats.Instance.Heal(skipHealAmount);
 
@@ -135,6 +142,8 @@ public class RewardChoiceUI : MonoBehaviour
 
     private void ConfirmSelectedCards()
     {
+        if (!TryBeginCompletion()) return;
+
         if (selectedCards.Count == 0 && skipHealAmount > 0 && PlayerStats.Instance != null)
             PlayerStats.Instance.Heal(skipHealAmount);
 
@@ -157,8 +166,8 @@ public class RewardChoiceUI : MonoBehaviour
 
     private void CompleteNode()
     {
-        if (completeNodeAfterPick && GameManager.Instance != null)
-            GameManager.Instance.CompleteCurrentNode();
+        if (completeNodeAfterPick)
+            TryCompleteNode();
     }
 
     private void EnsureUI()

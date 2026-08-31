@@ -13,18 +13,20 @@ public class NodeContentManager : MonoBehaviour
 
     private GameObject currentContent;
 
+    public bool HasCurrentContent => currentContent != null;
+
     public void LoadNodeContent(Node node)
     {
         if (node == null) return;
-        LoadNodeContent(node.type, node.depth);
+        LoadNodeContent(node.type, node.depth, node, GetCurrentSessionToken());
     }
 
     public void LoadNodeContent(NodeType nodeType)
     {
-        LoadNodeContent(nodeType, -1);
+        LoadNodeContent(nodeType, -1, null, GetCurrentSessionToken());
     }
 
-    private void LoadNodeContent(NodeType nodeType, int nodeDepth)
+    private void LoadNodeContent(NodeType nodeType, int nodeDepth, Node boundNode, int sessionToken)
     {
         EnsureCoreManagers();
         ClearCurrentContent();
@@ -33,11 +35,13 @@ public class NodeContentManager : MonoBehaviour
         if (prefab == null)
         {
             currentContent = CreateFallbackContent(nodeType, nodeDepth);
+            BindContentController(currentContent, boundNode, sessionToken);
             return;
         }
 
         currentContent = Instantiate(prefab);
         EnsureContentController(currentContent, nodeType, nodeDepth);
+        BindContentController(currentContent, boundNode, sessionToken);
 
         // 营地设置 sorting order
         if (nodeType == NodeType.Camp)
@@ -97,15 +101,20 @@ public class NodeContentManager : MonoBehaviour
             case NodeType.Battle:
                 CombatController battle = content.AddComponent<CombatController>();
                 battle.isEliteBattle = false;
+                battle.isBossBattle = false;
+                battle.showCardRewardOnVictory = true;
                 break;
             case NodeType.EliteBattle:
                 CombatController elite = content.AddComponent<CombatController>();
                 elite.isEliteBattle = true;
+                elite.isBossBattle = false;
+                elite.showCardRewardOnVictory = true;
                 break;
             case NodeType.Boss:
                 CombatController boss = content.AddComponent<CombatController>();
-                boss.isEliteBattle = true;
-                boss.eliteEnemyCount = 1;
+                boss.isEliteBattle = false;
+                boss.isBossBattle = true;
+                boss.showCardRewardOnVictory = false;
                 break;
             case NodeType.Camp:
                 CampManager camp = content.AddComponent<CampManager>();
@@ -147,18 +156,35 @@ public class NodeContentManager : MonoBehaviour
                 CombatController controller = content.GetComponentInChildren<CombatController>(true);
                 if (controller == null)
                     controller = content.AddComponent<CombatController>();
-                controller.isEliteBattle = nodeType != NodeType.Battle;
-                if (nodeType == NodeType.Boss)
-                    controller.eliteEnemyCount = 1;
+                controller.isEliteBattle = nodeType == NodeType.EliteBattle;
+                controller.isBossBattle = nodeType == NodeType.Boss;
+                controller.showCardRewardOnVictory = nodeType != NodeType.Boss;
                 break;
         }
+    }
+
+    private void BindContentController(GameObject content, Node node, int sessionToken)
+    {
+        if (content == null) return;
+
+        NodeContentController controller = content.GetComponentInChildren<NodeContentController>(true);
+        if (controller != null)
+            controller.BindNode(node, sessionToken);
+    }
+
+    private int GetCurrentSessionToken()
+    {
+        return GameManager.Instance != null ? GameManager.Instance.CurrentContentSession : 0;
     }
 
     public void ClearCurrentContent()
     {
         if (currentContent != null)
         {
-            Destroy(currentContent);
+            if (Application.isPlaying)
+                Destroy(currentContent);
+            else
+                DestroyImmediate(currentContent);
             currentContent = null;
         }
     }

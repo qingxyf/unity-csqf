@@ -118,6 +118,7 @@ public static class EventLibrary
         taboo.healthChange = -20;
         taboo.cardsToDraw = 3;
         taboo.maxHealthChange = 5;
+        taboo.upgradeRandomCard = true;
 
         EventChoice heal = Choice("翻阅治愈术", "你按照手册治疗了伤势。");
         heal.healthChange = 25;

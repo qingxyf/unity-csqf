@@ -27,8 +27,36 @@ public class CardEffectManager : MonoBehaviour
     {
         if (Instance != null) return;
 
+        CardEffectManager existing = FindObjectOfType<CardEffectManager>();
+        if (existing != null)
+        {
+            Instance = existing;
+            return;
+        }
+
         GameObject go = new GameObject("CardEffectManager");
         go.AddComponent<CardEffectManager>();
+    }
+
+    /// <summary>
+    /// Clears state that is only meaningful within one roguelike run. This
+    /// manager persists between combats, so terminal results must reset it
+    /// explicitly before a new map is generated.
+    /// </summary>
+    public void ResetForNewRun()
+    {
+        if (DeckManager.Instance != null)
+            DeckManager.Instance.CardDrawn -= OnSupplyLineWatchedCardDrawn;
+
+        doubleChantUseCount = 0;
+        shiningGloryDamageReduction = 0;
+        nextCardDoubleEffect = false;
+        fireCardsPlayedThisTurn = 0;
+        waterCostReductionsAvailable = 0;
+        coldSpringBonusDamage = 0;
+        pendingSupplyLineReturnCard = null;
+        pendingDodgeReturnCard = null;
+        supplyLineReturnTriggered = false;
     }
 
     public void OnPlayerTurnStart()

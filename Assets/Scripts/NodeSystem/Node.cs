@@ -106,6 +106,9 @@ public class Node : MonoBehaviour
     {
         type = nodeType;
         depth = nodeDepth;
+        nextNodes.Clear();
+        isActive = false;
+        isCompleted = false;
         UpdateVisuals();
     }
 

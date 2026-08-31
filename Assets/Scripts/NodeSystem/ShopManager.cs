@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class ShopManager : MonoBehaviour
+public class ShopManager : NodeContentController
 {
     [Header("Shop Settings")]
     public int offerCount = 4;
@@ -115,7 +115,16 @@ public class ShopManager : MonoBehaviour
             text.text = $"{label}\n<size=75%>{description}</size>";
 
         Button button = buttonObject.GetComponent<Button>();
-        if (button != null) button.onClick.AddListener(action);
+        if (button != null)
+        {
+            button.onClick.AddListener(() =>
+            {
+                if (!button.interactable) return;
+                button.interactable = false;
+                action();
+                if (button != null) button.interactable = true;
+            });
+        }
     }
 
     private void CreateCollectibleOffer()
@@ -143,9 +152,16 @@ public class ShopManager : MonoBehaviour
     {
         if (PlayerStats.Instance == null || DeckManager.Instance == null) return;
 
+        Button button = buttonObject != null ? buttonObject.GetComponent<Button>() : null;
+        if (button != null && !button.interactable) return;
+        if (button != null) button.interactable = false;
+
         int price = GetCardPrice(card);
         if (!PlayerStats.Instance.SpendGold(price))
+        {
+            if (button != null) button.interactable = true;
             return;
+        }
 
         if (!DeckManager.Instance.TakeCardFromHiddenPool(card))
             DeckManager.Instance.AddCardToBackpack(card);
@@ -158,9 +174,16 @@ public class ShopManager : MonoBehaviour
     {
         if (collectible == null || PlayerStats.Instance == null) return;
 
+        Button button = buttonObject != null ? buttonObject.GetComponent<Button>() : null;
+        if (button != null && !button.interactable) return;
+        if (button != null) button.interactable = false;
+
         int price = ApplyShopDiscount(collectible.shopPrice);
         if (!PlayerStats.Instance.SpendGold(price))
+        {
+            if (button != null) button.interactable = true;
             return;
+        }
 
         CollectibleManager.AddCollectible(collectible);
         Destroy(buttonObject);
@@ -209,8 +232,7 @@ public class ShopManager : MonoBehaviour
 
     private void LeaveShop()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.CompleteCurrentNode();
+        TryCompleteNode();
     }
 
     private void EnsureUI()

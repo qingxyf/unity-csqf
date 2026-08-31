@@ -33,6 +33,7 @@ crashlytics-build.properties
 *.aab
 *.unitypackage
 *.zip
+/artifacts/
 
 # Non-Unity folders at project root
 3.0/

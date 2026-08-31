@@ -38,6 +38,16 @@ public static class CardResourceUtility
         if (PrefabAliases.TryGetValue(card.cardName, out string aliasName))
             return LoadCardPrefab(aliasName);
 
+        if (!string.IsNullOrEmpty(card.baseCardName) && card.baseCardName != card.cardName)
+        {
+            prefab = LoadCardPrefab(card.baseCardName);
+            if (prefab != null)
+                return prefab;
+
+            if (PrefabAliases.TryGetValue(card.baseCardName, out string baseAliasName))
+                return LoadCardPrefab(baseAliasName);
+        }
+
         return null;
     }
 

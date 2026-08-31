@@ -27,6 +27,7 @@ public class DeckManager : MonoBehaviour
     public List<CardData> hand = new List<CardData>();
     public List<CardData> discardPile = new List<CardData>();
     public List<CardData> exhaustPile = new List<CardData>(); // Removed from game for this battle
+    private readonly HashSet<CardData> runtimeUpgradedCards = new HashSet<CardData>();
 
     private void Awake()
     {
@@ -47,6 +48,13 @@ public class DeckManager : MonoBehaviour
     {
         if (Instance == null)
         {
+            DeckManager existing = FindObjectOfType<DeckManager>();
+            if (existing != null)
+            {
+                Instance = existing;
+                return;
+            }
+
             GameObject go = new GameObject("DeckManager");
             Instance = go.AddComponent<DeckManager>();
             // Initialize will be called by Awake
@@ -165,6 +173,9 @@ public class DeckManager : MonoBehaviour
 
     public void StartCombat()
     {
+        if (Instance == null)
+            Instance = this;
+
         if (backpack.Count == 0)
         {
             DrawCardsWithMaxCost(10, 3);
@@ -244,6 +255,32 @@ public class DeckManager : MonoBehaviour
 
         HandChanged?.Invoke();
         DeckChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Discards all cards earned or used during the current roguelike run.
+    /// Only upgraded runtime clones are destroyed; Resources card assets remain
+    /// immutable and are used to rebuild the hidden pool for the next run.
+    /// </summary>
+    public void ResetForNewRun()
+    {
+        hiddenCardPool.Clear();
+        backpack.Clear();
+        drawPile.Clear();
+        hand.Clear();
+        discardPile.Clear();
+        exhaustPile.Clear();
+
+        foreach (CardData card in runtimeUpgradedCards)
+        {
+            if (card != null)
+                DestroyRuntimeCard(card);
+        }
+        runtimeUpgradedCards.Clear();
+
+        InitializeHiddenPool();
+        DeckChanged?.Invoke();
+        HandChanged?.Invoke();
     }
 
     /// <summary>
@@ -358,6 +395,46 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Replaces one eligible backpack card with a run-local upgraded clone.
+    /// Shared Resources assets are never mutated, so subsequent runs keep the
+    /// original card cost and description.
+    /// </summary>
+    public bool TryUpgradeRandomBackpackCard(out CardData upgradedCard)
+    {
+        upgradedCard = null;
+
+        List<int> eligibleIndices = new List<int>();
+        for (int i = 0; i < backpack.Count; i++)
+        {
+            CardData card = backpack[i];
+            if (card != null && card.upgradeLevel == 0)
+                eligibleIndices.Add(i);
+        }
+
+        if (eligibleIndices.Count == 0)
+            return false;
+
+        int selectedIndex = eligibleIndices[UnityEngine.Random.Range(0, eligibleIndices.Count)];
+        CardData original = backpack[selectedIndex];
+        CardData clone = UnityEngine.Object.Instantiate(original);
+        clone.name = original.name + "_Upgraded";
+        clone.upgradeLevel = original.upgradeLevel + 1;
+        clone.baseCardName = string.IsNullOrEmpty(original.baseCardName)
+            ? original.cardName
+            : original.baseCardName;
+        clone.cost = Mathf.Max(0, original.cost - 1);
+        clone.description = string.IsNullOrEmpty(original.description)
+            ? "强化：费用 -1"
+            : original.description + "\n<color=#f7d774>强化：费用 -1</color>";
+
+        backpack[selectedIndex] = clone;
+        runtimeUpgradedCards.Add(clone);
+        upgradedCard = clone;
+        DeckChanged?.Invoke();
+        return true;
+    }
+
     public void AddCardToBackpack(CardData card)
     {
         if (card == null) return;
@@ -420,5 +497,13 @@ public class DeckManager : MonoBehaviour
             list[k] = list[n];
             list[n] = value;
         }
+    }
+
+    private static void DestroyRuntimeCard(CardData card)
+    {
+        if (Application.isPlaying)
+            Destroy(card);
+        else
+            DestroyImmediate(card);
     }
 }

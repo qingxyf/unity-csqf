@@ -1,12 +1,10 @@
 {
-    "name": "Project.EditModeTests",
+    "name": "Qingfeng.Runtime",
     "rootNamespace": "",
     "references": [
-        "GUID:7c4f6f2cbf1a4f4d9d695d8596ce1b72"
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
@@ -14,8 +12,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false,
-    "optionalUnityReferences": [
-        "TestAssemblies"
-    ]
+    "noEngineReferences": false
 }

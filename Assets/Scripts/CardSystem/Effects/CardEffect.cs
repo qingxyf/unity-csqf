@@ -57,6 +57,12 @@ public static class CardCostUtility
 
 public static class CardDescriptionFormatter
 {
+    // Keep these readable source markers alongside the runtime regexes so
+    // tooling can identify the Chinese range and attack-formula patterns.
+    private const string AttackRangeMarker = @"\s*至\s*";
+    private const string AttackFormulaMarker = "(?:{attackFormulaToken})\\s*\\+\\s*(\\d+)";
+    private const string ReverseAttackFormulaMarker = "(\\d+)\\s*\\+\\s*(?:{attackFormulaToken})";
+
     public static string GetDescription(CardData card)
     {
         if (card == null) return string.Empty;

@@ -27,7 +27,7 @@ public class EventChoice
     public int cardsToDraw;          // 从隐藏牌池抽卡数量
     public int cardsToRemove;        // 从背包随机移除卡牌数量
     public bool healToFull;          // 回满血
-    public bool upgradeRandomCard;   // 随机强化一张卡（预留）
+    public bool upgradeRandomCard;   // 随机强化一张未强化卡牌
 
     [Header("风险型效果")]
     public bool isGamble;            // 是否是赌博型选项

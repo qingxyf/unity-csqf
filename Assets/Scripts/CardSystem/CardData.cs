@@ -11,4 +11,10 @@ public class CardData : ScriptableObject
     public Sprite cardArt;
     public string effectId;
     public CardEffect effect;
+
+    [Header("Run-time upgrade state")]
+    [Tooltip("Runtime clones use this field; source cards in Resources remain at level 0.")]
+    public int upgradeLevel;
+    [HideInInspector]
+    public string baseCardName;
 }

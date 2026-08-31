@@ -9,6 +9,7 @@ public class PlayerStats : MonoBehaviour, IDamageable
     public int currentHealth;
     public int baseAttack = 10;
     public int initialMana = 6;
+    public int baseMaxMana = 10;
     public int maxMana = 10;
     public int manaRegenPerTurn = 2;
     public int currentMana;
@@ -107,6 +108,17 @@ public class PlayerStats : MonoBehaviour, IDamageable
     {
         if (Instance != null) return;
 
+        // EditMode tests can construct the component without Unity invoking
+        // Awake. Reuse an existing scene component before creating a duplicate.
+        PlayerStats existing = FindObjectOfType<PlayerStats>();
+        if (existing != null)
+        {
+            Instance = existing;
+            if (!existing.initialized)
+                existing.InitializeStats();
+            return;
+        }
+
         GameObject go = new GameObject("PlayerStats");
         PlayerStats stats = go.AddComponent<PlayerStats>();
         stats.InitializeStats();
@@ -120,9 +132,13 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     public void InitializeStats()
     {
+        if (Instance == null)
+            Instance = this;
+
         initialized = true;
         maxHealth = baseMaxHealth;
         currentHealth = maxHealth;
+        maxMana = baseMaxMana;
         currentMana = initialMana;
         gold = startingGold;
         currentShield = 0;
@@ -130,6 +146,17 @@ public class PlayerStats : MonoBehaviour, IDamageable
         hasFlameShield = false;
         activeEffects.Clear();
         Debug.Log($"主角属性初始化: HP {currentHealth}, ATK {baseAttack}, Mana {currentMana}");
+    }
+
+    /// <summary>
+    /// Restores all state that belongs to one roguelike run while keeping the
+    /// configured starting stats intact for the next run.
+    /// </summary>
+    public void ResetForNewRun()
+    {
+        InitializeStats();
+        OnBattleEnd();
+        isInitialCombatTurn = false;
     }
 
     public void OnBattleEnd()
@@ -475,6 +502,7 @@ public static class CollectibleManager
 {
     private static readonly List<CollectibleData> ownedCollectibles = new List<CollectibleData>();
     private static readonly HashSet<CardElement> discountedElementsThisTurn = new HashSet<CardElement>();
+    private static readonly HashSet<CollectibleData> runtimeCollectibles = new HashSet<CollectibleData>();
 
     public static IReadOnlyList<CollectibleData> OwnedCollectibles => ownedCollectibles;
 
@@ -482,6 +510,26 @@ public static class CollectibleManager
     {
         ownedCollectibles.Clear();
         discountedElementsThisTurn.Clear();
+    }
+
+    /// <summary>
+    /// Clears the current run and disposes only collectible instances created
+    /// by this manager. Serialized collectible assets are never destroyed.
+    /// </summary>
+    public static void ResetForNewRun()
+    {
+        foreach (CollectibleData collectible in runtimeCollectibles)
+        {
+            if (collectible == null) continue;
+
+            if (Application.isPlaying)
+                Object.Destroy(collectible);
+            else
+                Object.DestroyImmediate(collectible);
+        }
+
+        runtimeCollectibles.Clear();
+        Clear();
     }
 
     public static void AddCollectible(CollectibleData collectible)
@@ -617,7 +665,7 @@ public static class CollectibleManager
         collectible.effectType = CollectibleEffectType.MaxHealth;
         collectible.amount = 15;
         collectible.shopPrice = 110;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateGreaterMaxHealthCollectible()
@@ -630,7 +678,7 @@ public static class CollectibleManager
         collectible.effectType = CollectibleEffectType.MaxHealth;
         collectible.amount = 25;
         collectible.shopPrice = 160;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateMaxManaCollectible()
@@ -643,7 +691,7 @@ public static class CollectibleManager
         collectible.effectType = CollectibleEffectType.MaxMana;
         collectible.amount = 1;
         collectible.shopPrice = 150;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateStartShieldCollectible()
@@ -656,7 +704,7 @@ public static class CollectibleManager
         collectible.effectType = CollectibleEffectType.StartShield;
         collectible.amount = 8;
         collectible.shopPrice = 90;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateFireDamageCollectible()
@@ -670,7 +718,7 @@ public static class CollectibleManager
         collectible.damageType = DamageType.Fire;
         collectible.amount = 10;
         collectible.shopPrice = 120;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateWaterDiscountCollectible()
@@ -684,7 +732,7 @@ public static class CollectibleManager
         collectible.element = CardElement.Water;
         collectible.amount = 1;
         collectible.shopPrice = 130;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static CollectibleData CreateShopDiscountCollectible()
@@ -697,11 +745,18 @@ public static class CollectibleManager
         collectible.effectType = CollectibleEffectType.ShopDiscountPercent;
         collectible.amount = 15;
         collectible.shopPrice = 100;
-        return collectible;
+        return RegisterRuntimeCollectible(collectible);
     }
 
     private static Sprite LoadCollectibleIcon(string iconName)
     {
         return Resources.Load<Sprite>($"Icons/Collectibles/{iconName}");
+    }
+
+    private static CollectibleData RegisterRuntimeCollectible(CollectibleData collectible)
+    {
+        if (collectible != null)
+            runtimeCollectibles.Add(collectible);
+        return collectible;
     }
 }

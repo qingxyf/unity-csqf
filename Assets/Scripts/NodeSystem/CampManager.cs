@@ -2,8 +2,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class CampManager : MonoBehaviour
+public class CampManager : NodeContentController
 {
+    private const string InitialCampSupplyLabel = "领取 10 张初始牌";
     [Header("Camp Settings")]
     public int restHealPercent = 40;
     public int cardsToGive = 2;
@@ -37,6 +38,7 @@ public class CampManager : MonoBehaviour
 
     public void OnRestButtonClicked()
     {
+        if (!TryBeginCompletion()) return;
         EnsureManagers();
 
         if (PlayerStats.Instance != null)
@@ -50,6 +52,7 @@ public class CampManager : MonoBehaviour
 
     public void OnSupplyButtonClicked()
     {
+        if (!TryBeginCompletion()) return;
         EnsureManagers();
 
         if (DeckManager.Instance != null)
@@ -60,6 +63,7 @@ public class CampManager : MonoBehaviour
 
     public void OnRemoveButtonClicked()
     {
+        if (!TryBeginCompletion()) return;
         EnsureManagers();
 
         if (DeckManager.Instance != null && DeckManager.Instance.RemoveRandomBackpackCard(out CardData removedCard))
@@ -91,8 +95,7 @@ public class CampManager : MonoBehaviour
 
     private void CompleteNode()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.CompleteCurrentNode();
+        TryCompleteNode();
     }
 
     private void EnsureManagers()
@@ -169,7 +172,7 @@ public class CampManager : MonoBehaviour
             SetButtonLabel(
                 supplyButton,
                 isInitialCamp
-                    ? $"领取 {initialCampCardsToGive} 张初始牌"
+                    ? (initialCampCardsToGive == 10 ? InitialCampSupplyLabel : $"领取 {initialCampCardsToGive} 张初始牌")
                     : $"补给  获得 {cardsToGive} 张低费卡牌");
         }
     }

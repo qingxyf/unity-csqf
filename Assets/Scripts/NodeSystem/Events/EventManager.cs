@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class EventManager : MonoBehaviour
+public class EventManager : NodeContentController
 {
     [Header("Events")]
     public List<EventData> eventPool = new List<EventData>();
@@ -25,8 +25,10 @@ public class EventManager : MonoBehaviour
 
     private EventData currentEvent;
     private string lastGrantedCollectibleName;
+    private string lastUpgradedCardName;
 
     public string LastGrantedCollectibleName => lastGrantedCollectibleName;
+    public string LastUpgradedCardName => lastUpgradedCardName;
 
     private void Start()
     {
@@ -68,6 +70,13 @@ public class EventManager : MonoBehaviour
 
     private void DisplayEvent(EventData evt)
     {
+        if (evt == null)
+        {
+            Debug.LogWarning("EventManager: attempted to display a null event.");
+            OnContinue();
+            return;
+        }
+
         if (titleText != null)
             titleText.text = evt.eventName;
 
@@ -94,9 +103,18 @@ public class EventManager : MonoBehaviour
                 Destroy(child.gameObject);
         }
 
-        for (int i = 0; i < evt.choices.Count; i++)
+        if (choiceButtonContainer == null || choiceButtonPrefab == null)
         {
-            EventChoice choice = evt.choices[i];
+            Debug.LogWarning("EventManager: choice UI is not configured; event remains non-interactive.");
+            return;
+        }
+
+        List<EventChoice> choices = evt.choices ?? new List<EventChoice>();
+        for (int i = 0; i < choices.Count; i++)
+        {
+            EventChoice choice = choices[i];
+            if (choice == null) continue;
+
             GameObject btnObj = Instantiate(choiceButtonPrefab, choiceButtonContainer);
             btnObj.SetActive(true);
 
@@ -141,9 +159,14 @@ public class EventManager : MonoBehaviour
 
     private void OnChoiceSelected(int index)
     {
-        if (currentEvent == null || index >= currentEvent.choices.Count) return;
+        if (currentEvent == null || currentEvent.choices == null || index < 0 || index >= currentEvent.choices.Count) return;
+        if (CompletionRequested) return;
+
+        lastGrantedCollectibleName = null;
+        lastUpgradedCardName = null;
 
         EventChoice choice = currentEvent.choices[index];
+        if (choice == null) return;
         string resultMessage;
 
         if (choice.isGamble)
@@ -151,23 +174,32 @@ public class EventManager : MonoBehaviour
             bool success = Random.value <= choice.gambleSuccessRate;
             if (success)
             {
-                ApplyChoiceEffects(choice);
+                if (!ApplyChoiceEffects(choice))
+                    return;
                 resultMessage = choice.resultDescription;
             }
             else
             {
-                ApplyHealthChange(choice.gambleFailHealthChange);
+                if (!ApplyHealthChange(choice.gambleFailHealthChange))
+                    return;
                 resultMessage = choice.gambleFailText;
             }
         }
         else
         {
-            ApplyChoiceEffects(choice);
+            if (!ApplyChoiceEffects(choice))
+                return;
             resultMessage = choice.resultDescription;
         }
 
+        if (!TryBeginCompletion())
+            return;
+
         if (!string.IsNullOrEmpty(lastGrantedCollectibleName))
             resultMessage = $"{resultMessage}\n\n获得藏品：{lastGrantedCollectibleName}";
+
+        if (!string.IsNullOrEmpty(lastUpgradedCardName))
+            resultMessage = $"{resultMessage}\n\n卡牌强化：{lastUpgradedCardName}";
 
         if (choiceButtonContainer != null)
             choiceButtonContainer.gameObject.SetActive(false);
@@ -180,17 +212,18 @@ public class EventManager : MonoBehaviour
         }
     }
 
-    private void ApplyChoiceEffects(EventChoice choice)
+    private bool ApplyChoiceEffects(EventChoice choice)
     {
         lastGrantedCollectibleName = null;
+        lastUpgradedCardName = null;
 
         PlayerStats player = PlayerStats.Instance;
-        if (player == null) return;
+        if (player == null) return false;
 
         if (choice.healToFull)
             player.HealFull();
         else if (!ApplyHealthChange(choice.healthChange))
-            return;
+            return false;
 
         if (choice.maxHealthChange != 0)
             player.IncreaseMaxHealth(choice.maxHealthChange);
@@ -209,7 +242,10 @@ public class EventManager : MonoBehaviour
         }
 
         DeckManager deck = DeckManager.Instance;
-        if (deck == null) return;
+        if (deck == null) return true;
+
+        if (choice.upgradeRandomCard && deck.TryUpgradeRandomBackpackCard(out CardData upgradedCard))
+            lastUpgradedCardName = upgradedCard.cardName;
 
         if (choice.cardsToDraw > 0)
         {
@@ -227,6 +263,8 @@ public class EventManager : MonoBehaviour
                     Debug.Log($"事件移除卡牌：{removedCard.cardName}");
             }
         }
+
+        return true;
     }
 
     private bool ApplyHealthChange(int healthChange)
@@ -275,7 +313,8 @@ public class EventManager : MonoBehaviour
     private void EnsureCollectibleChoices(List<EventData> events)
     {
         if (events == null) return;
-        if (events.Any(evt => evt != null && evt.choices.Any(choice => choice != null && choice.grantCollectible)))
+        if (events.Any(evt => evt != null && evt.choices != null &&
+            evt.choices.Any(choice => choice != null && choice.grantCollectible)))
             return;
 
         int marked = 0;
@@ -409,7 +448,6 @@ public class EventManager : MonoBehaviour
 
     private void OnContinue()
     {
-        if (GameManager.Instance != null)
-            GameManager.Instance.CompleteCurrentNode();
+        TryCompleteNode();
     }
 }

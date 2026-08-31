@@ -17,8 +17,29 @@ public class EnemyManager : MonoBehaviour
     {
         if (Instance != null) return;
 
+        EnemyManager existing = FindObjectOfType<EnemyManager>();
+        if (existing != null)
+        {
+            Instance = existing;
+            existing.RegisterExistingEnemies();
+            return;
+        }
+
         GameObject go = new GameObject("EnemyManager");
-        go.AddComponent<EnemyManager>();
+        EnemyManager created = go.AddComponent<EnemyManager>();
+        if (Instance == null)
+            Instance = created;
+        created.RegisterExistingEnemies();
+    }
+
+    public void RegisterExistingEnemies()
+    {
+        Enemy[] enemies = FindObjectsOfType<Enemy>();
+        foreach (Enemy enemy in enemies)
+        {
+            if (enemy != null)
+                Register(enemy);
+        }
     }
 
     public void Register(Enemy e)
@@ -35,5 +56,7 @@ public class EnemyManager : MonoBehaviour
     public void ClearNulls()
     {
         ActiveEnemies.RemoveAll(e => e == null);
+        if (ActiveEnemies.Count == 0)
+            RegisterExistingEnemies();
     }
 }

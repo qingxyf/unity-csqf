@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class CombatController : MonoBehaviour
+public class CombatController : NodeContentController
 {
     private static Sprite runtimeEnemySprite;
 
@@ -19,6 +19,7 @@ public class CombatController : MonoBehaviour
     public int normalEnemyCount = 2;
     public int eliteEnemyCount = 3;
     public bool isEliteBattle;
+    public bool isBossBattle;
 
     [Header("Rewards")]
     public int battleGoldReward = 15;
@@ -70,12 +71,23 @@ public class CombatController : MonoBehaviour
     private void Update()
     {
         if (!combatActive) return;
+
+        if (PlayerStats.Instance != null && PlayerStats.Instance.IsDead())
+        {
+            ResolvePlayerDefeat();
+            return;
+        }
+
         UpdateUI();
         CheckVictory();
     }
 
     public void StartCombat()
     {
+        PlayerStats.EnsureInstance();
+        DeckManager.EnsureInstance();
+        CardEffectManager.EnsureInstance();
+        EnemyManager.EnsureInstance();
         combatActive = true;
         resolvingTurn = false;
         rewardShown = false;
@@ -120,9 +132,7 @@ public class CombatController : MonoBehaviour
 
         if (PlayerStats.Instance != null && PlayerStats.Instance.IsDead())
         {
-            combatActive = false;
-            resolvingTurn = false;
-            Debug.Log("Player defeated.");
+            ResolvePlayerDefeat();
             return;
         }
 
@@ -158,15 +168,39 @@ public class CombatController : MonoBehaviour
 
     public void CompleteCombat()
     {
-        if (!combatActive && DeckManager.Instance == null) return;
+        if (!combatActive) return;
 
         combatActive = false;
 
         if (DeckManager.Instance != null)
             DeckManager.Instance.EndCombat();
 
-        if (completeNodeOnVictory && GameManager.Instance != null)
-            GameManager.Instance.CompleteCurrentNode();
+        if (completeNodeOnVictory)
+            TryCompleteNode();
+    }
+
+    /// <summary>
+    /// Finishes the active encounter as a run defeat. The terminal run
+    /// controller is idempotent, while this combat guard prevents the deck
+    /// from being returned twice when damage is observed on later frames.
+    /// </summary>
+    public bool ResolvePlayerDefeat()
+    {
+        if (!combatActive)
+            return false;
+
+        combatActive = false;
+        resolvingTurn = false;
+        if (DeckManager.Instance != null)
+            DeckManager.Instance.EndCombat();
+
+        RoguelikeRunController run = GameManager.Instance != null
+            ? GameManager.Instance.RunController
+            : null;
+        if (run == null)
+            run = FindObjectOfType<RoguelikeRunController>();
+
+        return run != null && run.FailRun();
     }
 
     private void RunEnemyTurn()
@@ -187,6 +221,12 @@ public class CombatController : MonoBehaviour
 
         if (EnemyManager.Instance.ActiveEnemies.Count > 0) return;
         if (rewardShown) return;
+
+        if (isBossBattle)
+        {
+            CompleteCombat();
+            return;
+        }
 
         if (TryShowVictoryReward())
             return;
@@ -219,7 +259,11 @@ public class CombatController : MonoBehaviour
         combatActive = false;
 
         GameObject rewardObject = new GameObject(isEliteBattle ? "EliteVictoryReward" : "BattleVictoryReward");
+        // Keep the reward under the active combat content so it is destroyed
+        // together with the node and cannot complete a later node.
+        rewardObject.transform.SetParent(transform, false);
         RewardChoiceUI reward = rewardObject.AddComponent<RewardChoiceUI>();
+        reward.BindNode(BoundNode, BoundSessionToken);
         reward.title = isEliteBattle
             ? $"精英奖励  +{goldReward} 金币  +{collectibleReward.collectibleName}"
             : $"战斗奖励  +{goldReward} 金币";
@@ -232,7 +276,7 @@ public class CombatController : MonoBehaviour
 
     private void SpawnDefaultEnemies()
     {
-        int count = isEliteBattle ? eliteEnemyCount : normalEnemyCount;
+        int count = isBossBattle ? 1 : (isEliteBattle ? eliteEnemyCount : normalEnemyCount);
         if (enemyPrefab == null)
         {
             for (int i = 0; i < count; i++)
@@ -253,13 +297,16 @@ public class CombatController : MonoBehaviour
 
     private void CreateRuntimeEnemy(int index, int count)
     {
-        GameObject enemyObject = new GameObject(isEliteBattle ? $"EliteEnemy_{index + 1}" : $"Enemy_{index + 1}");
+        string enemyName = isBossBattle ? "CardBoss" : (isEliteBattle ? $"EliteEnemy_{index + 1}" : $"Enemy_{index + 1}");
+        GameObject enemyObject = new GameObject(enemyName);
         enemyObject.transform.SetParent(enemyContainer != null ? enemyContainer : transform, false);
         enemyObject.transform.localPosition = GetEnemyPosition(index, count);
 
         SpriteRenderer renderer = enemyObject.AddComponent<SpriteRenderer>();
         renderer.sprite = GetRuntimeEnemySprite();
-        renderer.color = isEliteBattle ? new Color(0.7f, 0.2f, 0.9f) : new Color(0.8f, 0.25f, 0.25f);
+        renderer.color = isBossBattle
+            ? new Color(0.44f, 0.17f, 0.12f)
+            : (isEliteBattle ? new Color(0.7f, 0.2f, 0.9f) : new Color(0.8f, 0.25f, 0.25f));
         renderer.sortingOrder = 4;
 
         CircleCollider2D collider = enemyObject.AddComponent<CircleCollider2D>();
@@ -332,10 +379,14 @@ public class CombatController : MonoBehaviour
 
     private void ConfigureEnemy(Enemy enemy, int index)
     {
-        enemy.enemyName = isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}";
-        enemy.maxHealth = isEliteBattle ? 120 + index * 20 : 70 + index * 15;
-        enemy.baseAttack = isEliteBattle ? 18 + index * 3 : 10 + index * 2;
+        enemy.enemyName = isBossBattle ? "卡牌 Boss" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
+        enemy.maxHealth = isBossBattle ? 320 : (isEliteBattle ? 120 + index * 20 : 70 + index * 15);
+        enemy.baseAttack = isBossBattle ? 26 : (isEliteBattle ? 18 + index * 3 : 10 + index * 2);
         enemy.currentHealth = enemy.maxHealth;
+
+        EnemyManager.EnsureInstance();
+        if (EnemyManager.Instance != null)
+            EnemyManager.Instance.Register(enemy);
     }
 
     private Vector3 GetEnemyPosition(int index, int count)

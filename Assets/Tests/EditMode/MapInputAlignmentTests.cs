@@ -26,7 +26,7 @@ public class MapInputAlignmentTests
         GameObject host = new GameObject("MapGenerator test host");
         try
         {
-            Type mapGeneratorType = Type.GetType("MapGenerator, Assembly-CSharp");
+            Type mapGeneratorType = typeof(MapGenerator);
             Assert.That(mapGeneratorType, Is.Not.Null);
 
             Component generator = host.AddComponent(mapGeneratorType);
@@ -57,6 +57,40 @@ public class MapInputAlignmentTests
 
         Assert.That(source, Does.Contain("UnityEngine.EventSystems"));
         Assert.That(source, Does.Contain("IsPointerOverGameObject"));
+    }
+
+    [Test]
+    public void ForthSceneConfiguresEveryNodeRouteAndIcon()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/forth.unity", OpenSceneMode.Single);
+
+        NodeContentManager content = UnityEngine.Object.FindObjectOfType<NodeContentManager>();
+        Assert.That(content, Is.Not.Null);
+        Assert.That(content.campContentPrefab, Is.Not.Null);
+        Assert.That(content.eventContentPrefab, Is.Not.Null);
+        Assert.That(content.battleContentPrefab, Is.Not.Null);
+        Assert.That(content.treasureContentPrefab, Is.Not.Null);
+        Assert.That(content.shopContentPrefab, Is.Not.Null);
+        Assert.That(content.eliteBattleContentPrefab, Is.Not.Null);
+        Assert.That(content.bossContentPrefab, Is.Not.Null);
+
+        MapGenerator generator = UnityEngine.Object.FindObjectOfType<MapGenerator>();
+        Assert.That(generator, Is.Not.Null);
+        foreach (NodeType type in Enum.GetValues(typeof(NodeType)))
+        {
+            Assert.That(generator.nodeIcons.Any(config => config.type == type && config.icon != null), Is.True, type.ToString());
+        }
+    }
+
+    [Test]
+    public void ForthSceneContainsTheSelfContainedRoguelikeRunController()
+    {
+        EditorSceneManager.OpenScene("Assets/Scenes/forth.unity", OpenSceneMode.Single);
+
+        RoguelikeRunController run = UnityEngine.Object.FindObjectOfType<RoguelikeRunController>();
+        Assert.That(run, Is.Not.Null);
+        Assert.That(run.mainMenuSceneName, Is.EqualTo("start"));
+        Assert.That(run.resultPanel, Is.Not.Null);
     }
 
     [Test]

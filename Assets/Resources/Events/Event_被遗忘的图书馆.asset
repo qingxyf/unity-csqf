@@ -17,7 +17,7 @@ MonoBehaviour:
   illustration: {fileID: 21300000, guid: 2350769a38394ccba7def43f72100125, type: 3}
   choices:
   - buttonText: "研读禁忌魔法"
-    resultDescription: "知识以疼痛的代价刻入记忆，你获得了更多卡牌技巧。"
+    resultDescription: "知识以疼痛的代价刻入记忆，你获得了更多卡牌技巧，并强化了一张卡牌。"
     healthChange: -20
     maxHealthChange: 5
     manaChange: 0
@@ -25,7 +25,7 @@ MonoBehaviour:
     cardsToDraw: 3
     cardsToRemove: 0
     healToFull: 0
-    upgradeRandomCard: 0
+    upgradeRandomCard: 1
     isGamble: 0
     gambleSuccessRate: 0
     gambleFailText: ""

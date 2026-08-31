@@ -41,6 +41,7 @@ public class MapGenerator : MonoBehaviour
 
     public void GenerateMap()
     {
+        EnsureMapContainer();
         ClearExistingMap();
 
         for (int i = 0; i <= totalDepth + 1; i++)
@@ -186,18 +187,23 @@ public class MapGenerator : MonoBehaviour
 
     private NodeType GetWeightedRandomType()
     {
-        float total = battleWeight + eventWeight + shopWeight + treasureWeight + eliteBattleWeight + campWeight;
+        float total = Mathf.Max(0f, battleWeight) + Mathf.Max(0f, eventWeight) +
+            Mathf.Max(0f, shopWeight) + Mathf.Max(0f, treasureWeight) +
+            Mathf.Max(0f, eliteBattleWeight) + Mathf.Max(0f, campWeight);
+        if (total <= 0f)
+            return NodeType.Battle;
+
         float roll = Random.Range(0, total);
 
-        if (roll < battleWeight) return NodeType.Battle;
-        roll -= battleWeight;
-        if (roll < eventWeight) return NodeType.Event;
-        roll -= eventWeight;
-        if (roll < treasureWeight) return NodeType.Treasure;
-        roll -= treasureWeight;
-        if (roll < shopWeight) return NodeType.Shop;
-        roll -= shopWeight;
-        if (roll < eliteBattleWeight) return NodeType.EliteBattle;
+        if (roll < Mathf.Max(0f, battleWeight)) return NodeType.Battle;
+        roll -= Mathf.Max(0f, battleWeight);
+        if (roll < Mathf.Max(0f, eventWeight)) return NodeType.Event;
+        roll -= Mathf.Max(0f, eventWeight);
+        if (roll < Mathf.Max(0f, treasureWeight)) return NodeType.Treasure;
+        roll -= Mathf.Max(0f, treasureWeight);
+        if (roll < Mathf.Max(0f, shopWeight)) return NodeType.Shop;
+        roll -= Mathf.Max(0f, shopWeight);
+        if (roll < Mathf.Max(0f, eliteBattleWeight)) return NodeType.EliteBattle;
         return NodeType.Camp;
     }
 
@@ -267,7 +273,19 @@ public class MapGenerator : MonoBehaviour
 
     private Node CreateNode(NodeType type, int depth, Vector2 position)
     {
-        GameObject nodeObj = Instantiate(nodeTemplate, mapContainer);
+        GameObject nodeObj;
+        if (nodeTemplate != null)
+        {
+            nodeObj = Instantiate(nodeTemplate, mapContainer);
+        }
+        else
+        {
+            nodeObj = new GameObject("RuntimeNode");
+            nodeObj.transform.SetParent(mapContainer, false);
+            nodeObj.AddComponent<SpriteRenderer>();
+            nodeObj.AddComponent<CircleCollider2D>();
+        }
+
         nodeObj.transform.position = new Vector3(position.x, position.y, 0);
         nodeObj.transform.localScale = new Vector3(generatedNodeScale, generatedNodeScale, 1f);
 
@@ -306,6 +324,9 @@ public class MapGenerator : MonoBehaviour
     {
         nodesByDepth.Clear();
 
+        if (mapContainer == null)
+            return;
+
         Transform background = null;
         for (int i = 0; i < mapContainer.childCount; i++)
         {
@@ -318,10 +339,33 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        while (mapContainer.childCount > 0)
-            DestroyImmediate(mapContainer.GetChild(0).gameObject);
+        for (int i = mapContainer.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = mapContainer.GetChild(i).gameObject;
+            if (Application.isPlaying)
+                Destroy(child);
+            else
+                DestroyImmediate(child);
+        }
 
         if (background != null)
             background.SetParent(mapContainer);
+    }
+
+    private void EnsureMapContainer()
+    {
+        if (mapContainer != null)
+            return;
+
+        Transform existing = transform.Find("RuntimeMapContainer");
+        if (existing != null)
+        {
+            mapContainer = existing;
+            return;
+        }
+
+        GameObject container = new GameObject("RuntimeMapContainer");
+        container.transform.SetParent(transform, false);
+        mapContainer = container.transform;
     }
 }

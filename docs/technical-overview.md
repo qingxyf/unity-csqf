@@ -16,7 +16,7 @@
 
 一款融合多种玩法的 Unity 2D 游戏：
 
-- **肉鸽地图** — 类杀戮尖塔的节点地图，包含战斗、事件、商店、宝藏、营地、Boss 节点
+- **肉鸽地图** — 独立的类杀戮尖塔单局模式，包含战斗、事件、商店、宝藏、营地、卡牌 Boss 节点
 - **卡牌战斗** — 蓄能式回合制卡牌战斗，初始 6 能量、上限 10、每回合回复 2，含元素反应和收藏品系统
 - **弹幕 Boss 战** — 类东方 Project 的弹幕射击 Boss 战，10 种攻击模式 + 狂暴二阶段
 - **街机小游戏** — 吃积分 + 连击系统 + 道具 + 追踪敌人
@@ -76,6 +76,7 @@ Assets/Scripts/
 │   ├── MapGenerator.cs             # 地图生成（固定每层节点数, 权重随机, 智能连线）
 │   ├── GameManager.cs              # 游戏流程控制（单例, 选择节点/完成节点）
 │   ├── NodeContentManager.cs       # 节点内容加载（预制体实例化）
+│   ├── NodeContentController.cs    # 节点内容生命周期与幂等完成门闩
 │   ├── NodeVisualizer.cs           # 节点连线可视化
 │   ├── PathManager.cs              # 路径管理（已精简, 逻辑合并到 GameManager）
 │   ├── CampManager.cs              # 营地逻辑（休息/补给/精简卡组）
@@ -205,7 +206,7 @@ StatusEffectFactory.Create(type, duration, value) → 具体实例
 | EliteBattle | 10% | 精英战 |
 | Camp | 5% | 中途营地 |
 
-**流程控制（GameManager 单例）：**
+**流程控制（GameManager + RoguelikeRunController）：**
 ```
 Node.OnMouseDown() → GameManager.SelectNode(node)
   → MapGenerator.MoveToNode() — 标记完成, 激活下层
@@ -214,6 +215,13 @@ Node.OnMouseDown() → GameManager.SelectNode(node)
   → ... 节点内容进行中 ...
   → GameManager.CompleteCurrentNode() — 清除内容, 重开地图
 ```
+
+`RoguelikeRunController` 负责单局边界：开始新局时重置玩家、牌组、运行时强化卡和运行时藏品，再生成新地图；任意卡牌战失败进入失败结算，卡牌 Boss 胜利进入胜利结算。结算面板提供“新开一局”和“返回主菜单”，且终局转换是幂等的。Boss 节点不会加载 `final`、`thirdscene` 或其他独立玩法；存档/读档不在当前范围内。
+
+节点内容控制器（篝火、事件、宝藏、商店、普通/精英/Boss 战斗）统一继承
+`NodeContentController`。`NodeContentManager` 在加载时绑定当前 `Node`，所有完成请求
+都经过 `GameManager.TryCompleteCurrentNode` 的幂等门闩；重复点击、旧内容回调或重复
+领取奖励不会再次推进地图。
 
 ### 3.4 事件系统
 
@@ -251,6 +259,7 @@ EventData (ScriptableObject)
 - 战斗 UI 提供常驻基础攻击：消耗 1 能量，造成玩家基础攻击伤害，并立即结束玩家回合。
 - 普通战斗胜利奖励金币并展示 3 张卡，玩家可以选择 0-2 张加入卡组。
 - 精英战胜利奖励更多金币、自动获得 1 个收藏品，并展示 4 张卡，玩家可以选择 0-2 张加入卡组。
+- Boss 是一场单敌人的卡牌战，不产生普通战斗选卡奖励；胜利直接进入本局胜利结算。
 - 跳过奖励可获得少量治疗。
 - 商店使用金币购买卡牌、收藏品、回血、刷新货架或移除背包中的随机卡牌；移除服务每次使用后涨价。
 - 收藏品第一版支持最大生命提升、能量上限提升、开战护盾、指定元素伤害提升、每回合第一张指定元素卡减费、商店折扣；精英战、部分事件和商店都能获得。
@@ -305,7 +314,8 @@ EventData (ScriptableObject)
 | Start | 开始菜单 | StartMenuManager |
 | SampleScene | 场景一（街机） | PlayerController, MovingTarget, ChaserEnemy, SpeedUP |
 | thirdscene | Boss 弹幕战 | SimplePlayerController, BossController |
-| final | 肉鸽卡牌 | GameManager, MapGenerator, CardEffectManager, DeckManager |
+| forth | 独立卡牌肉鸽单局 | GameManager, RoguelikeRunController, MapGenerator, CardEffectManager, DeckManager |
+| final | 旧版独立玩法（非肉鸽路由） | SimplePlayerController 等旧版脚本 |
 | （音游场景） | 音游 | MidiNoteGenerator, GameTimer |
 
 ---
@@ -408,7 +418,7 @@ Create → Node System → Event Data，填写字段，拖到 EventManager.event
 1. 在 `Node.cs` 的 `NodeType` 枚举中添加
 2. 在 `NodeContentManager` 中添加对应的预制体字段
 3. 在 `MapGenerator.GetWeightedRandomType()` 中添加权重
-4. 创建内容预制体，完成时调用 `GameManager.Instance.CompleteCurrentNode()`
+4. 创建内容控制器并继承 `NodeContentController`，完成前调用 `TryBeginCompletion()`，完成时调用 `TryCompleteNode()`；由 `NodeContentManager` 绑定当前节点会话，不要绕过生命周期门闩。
 
 ### 添加新 Boss 技能
 
@@ -431,14 +441,29 @@ Create → Node System → Event Data，填写字段，拖到 EventManager.event
 
 ### 待实现
 
-- [ ] 商店节点内容预制体
-- [ ] 宝藏节点内容预制体
-- [ ] 精英战节点内容预制体（更强的敌人配置）
-- [ ] 卡牌强化系统（EventChoice 中已预留 `upgradeRandomCard` 字段）
+- [x] 商店节点内容预制体（缺失时使用运行时 UI）
+- [x] 宝藏节点内容预制体（缺失时使用运行时 UI）
+- [x] 精英战节点内容预制体（缺失时使用普通战斗控制器的精英配置）
+- [x] 卡牌强化系统（`EventChoice.upgradeRandomCard` 使用运行时克隆并降低 1 点费用）
 - [x] 战斗结束奖励界面（选卡/加血/加金币）
 - [x] 金币系统（商店需要）
-- [ ] Boss 死亡动画和通关结算
+- [x] 卡牌 Boss 通关/失败结算（新开一局或返回主菜单）
 - [ ] 存档/读档系统
+
+### 运行时资源兜底
+
+事件插画是可选字段；没有插画时事件 UI 会隐藏图片区域。地图未绑定节点预制体或连线预制体时，`MapGenerator` 和 `NodeVisualizer` 会生成没有图片的基础节点/连线。这样素材制作可以晚于逻辑开发，且不会阻塞 EditMode 测试和 CI 构建。
+
+### Harness 验证
+
+项目根目录的 `scripts/harness` 对应 Codex 通用 harness 规则：
+
+```powershell
+./scripts/harness/check-architecture.ps1
+./scripts/harness/precompletion.ps1 -RunBuild
+```
+
+GitHub Actions 使用 Unity 2022.3.49f1 执行同一套 EditMode 测试并构建 Standalone Windows 玩家。当前环境如果没有 Unity Editor，应使用 `-SkipUnity` 做静态检查，并将 Unity 结果交给 CI。
 
 ### 关键单例
 

@@ -327,7 +327,7 @@ public class CardUiProxyAlignmentTests
 
     private static Component AddRuntimeCardDisplay(GameObject cardObject)
     {
-        System.Type cardDisplayType = System.Type.GetType("CardDisplay, Assembly-CSharp");
+        System.Type cardDisplayType = typeof(CardDisplay);
         Assert.That(cardDisplayType, Is.Not.Null);
 
         return cardObject.AddComponent(cardDisplayType);

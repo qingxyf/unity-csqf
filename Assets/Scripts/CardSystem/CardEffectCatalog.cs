@@ -76,7 +76,9 @@ public static class CardEffectCatalog
         if (card == null) return null;
         if (card.effect != null) return card.effect;
 
-        string key = string.IsNullOrEmpty(card.effectId) ? card.cardName : card.effectId;
+        string key = card.effectId;
+        if (string.IsNullOrEmpty(key))
+            key = string.IsNullOrEmpty(card.baseCardName) ? card.cardName : card.baseCardName;
         return Resolve(key);
     }
 
