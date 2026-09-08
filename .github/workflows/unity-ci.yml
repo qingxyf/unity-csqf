@@ -54,6 +54,18 @@ jobs:
     needs: editmode
     steps:
       - uses: actions/checkout@v4
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          if [ -n "$AGENT_TOOLSDIRECTORY" ]; then
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          fi
+          sudo docker system prune --all --force --volumes
+          df -h
       - name: Build player
         uses: game-ci/unity-builder@v4
         env:
