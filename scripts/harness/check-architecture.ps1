@@ -17,6 +17,20 @@ if (-not (Test-Path $runtimeRoot)) {
     Fail "missing Assets/Scripts"
 }
 
+$workflowPath = Join-Path $ProjectRoot ".github\workflows\unity-ci.yml"
+if (-not (Test-Path $workflowPath)) {
+    Fail "missing .github/workflows/unity-ci.yml"
+}
+else {
+    $workflow = Get-Content -Raw $workflowPath
+    $licenseMappings = [regex]::Matches(
+        $workflow,
+        'UNITY_LICENSE:\s*\$\{\{\s*secrets\.UNITY_LICENSE\s*\}\}').Count
+    if ($licenseMappings -lt 2) {
+        Fail "Unity test and build jobs must pass the UNITY_LICENSE Actions secret"
+    }
+}
+
 $runtimeFiles = @(Get-ChildItem $runtimeRoot -Recurse -File -Filter *.cs |
     Where-Object { $_.FullName -notmatch "[\\/]Editor[\\/]" })
 foreach ($file in $runtimeFiles) {
