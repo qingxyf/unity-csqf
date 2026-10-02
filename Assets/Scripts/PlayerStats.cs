@@ -638,7 +638,7 @@ public static class CollectibleManager
 
         CollectibleData selected = candidates[Random.Range(0, candidates.Count)];
         if (authored.Count > 0)
-            selected = Instantiate(selected);
+            selected = Object.Instantiate(selected);
         CollectibleCatalog.EnsureIcon(selected);
         return RegisterRuntimeCollectible(selected);
     }

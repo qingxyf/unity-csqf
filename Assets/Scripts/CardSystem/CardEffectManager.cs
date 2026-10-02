@@ -126,6 +126,8 @@ public class CardEffectManager : MonoBehaviour
 
     public bool CanPlayCard(CardData card)
     {
+        CombatController combat = FindObjectOfType<CombatController>();
+        if (combat != null && !combat.AcceptsPlayerActions) return false;
         if (card == null || PlayerStats.Instance == null) return false;
         if (PlayerStats.Instance.HasStatus(StatusType.Silenced)) return false;
         return PlayerStats.Instance.currentMana >= CardCostUtility.GetEffectiveCardCost(card);
@@ -133,6 +135,8 @@ public class CardEffectManager : MonoBehaviour
 
     public bool PlayCard(CardData card, GameObject target)
     {
+        CombatController combat = FindObjectOfType<CombatController>();
+        if (combat != null && !combat.AcceptsPlayerActions) return false;
         if (card == null) return false;
         if (PlayerStats.Instance == null) return false;
 

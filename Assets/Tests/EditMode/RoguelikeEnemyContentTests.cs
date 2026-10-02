@@ -84,7 +84,15 @@ public class RoguelikeEnemyContentTests
         Assert.That(visual.body.GetComponent<Animation>().GetClip("Attack"), Is.Not.Null);
         boss.AttackPlayer();
         Assert.That(visual.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Attack));
-        boss.TakeDamage(10000);
+        PlayerStats.Instance.currentHealth = 1;
+        PlayerStats.Instance.currentShield = 0;
+        PlayerStats.Instance.ApplyStatus(StatusType.Bleed, 2);
+        boss.currentHealth = 1;
+        Assert.That(combat.UseBasicAttack(boss), Is.True);
+        Assert.That(PlayerStats.Instance.currentHealth, Is.EqualTo(1),
+            "The lethal basic attack must not advance to a damaging turn.");
+        Assert.That(combat.AcceptsPlayerActions, Is.False,
+            "Victory must lock input before the next frame.");
         EnemyManager.Instance.ClearNulls();
         Assert.That(EnemyManager.Instance.ActiveEnemies, Does.Not.Contain(boss));
         Assert.That(visual.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Death));
@@ -93,6 +101,18 @@ public class RoguelikeEnemyContentTests
         yield return new WaitForSeconds(0.06f);
         Assert.That(boss != null, Is.True, "The final boss must remain visible during its exit.");
         Assert.That((bool)active.GetValue(combat), Is.True);
+        Assert.That(combat.AcceptsPlayerActions, Is.False);
+        PlayerStats.Instance.currentMana = 0;
+        int healthAfterVictory = PlayerStats.Instance.currentHealth;
+        combat.RequestEndPlayerTurn();
+        Assert.That(PlayerStats.Instance.currentMana, Is.EqualTo(0));
+        Assert.That(PlayerStats.Instance.currentHealth, Is.EqualTo(healthAfterVictory));
+        CardData blockedCard = ScriptableObject.CreateInstance<CardData>();
+        blockedCard.cardName = "晨辉壁垒";
+        blockedCard.cost = 0;
+        Assert.That(CardEffectManager.Instance.CanPlayCard(blockedCard), Is.False);
+        Assert.That(CardEffectManager.Instance.PlayCard(blockedCard, null), Is.False);
+        Object.Destroy(blockedCard);
         yield return new WaitForSeconds(0.5f);
         Assert.That(boss == null, Is.True);
         Assert.That((bool)active.GetValue(combat), Is.False);

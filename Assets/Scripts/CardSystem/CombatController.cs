@@ -40,6 +40,7 @@ public class CombatController : NodeContentController
     private bool resolvingTurn;
     private bool rewardShown;
     private int displayedCollectibleCount = -1;
+    public bool AcceptsPlayerActions => combatActive && !resolvingTurn && !rewardShown;
 
     private void Awake()
     {
@@ -71,7 +72,8 @@ public class CombatController : NodeContentController
 
     private void Update()
     {
-        if (!combatActive) return;
+        // Once victory is recorded, only the visual exit/reward remains.
+        if (!combatActive || rewardShown) return;
 
         if (PlayerStats.Instance != null && PlayerStats.Instance.IsDead())
         {
@@ -118,8 +120,10 @@ public class CombatController : NodeContentController
 
     public void RequestEndPlayerTurn()
     {
-        if (!combatActive) return;
-        if (resolvingTurn) return;
+        if (!AcceptsPlayerActions) return;
+        // A lethal attack can request a turn before the next Update sees victory.
+        CheckVictory();
+        if (!AcceptsPlayerActions) return;
 
         resolvingTurn = true;
 
@@ -156,7 +160,7 @@ public class CombatController : NodeContentController
 
     public bool UseBasicAttack(Enemy target)
     {
-        if (!combatActive) return false;
+        if (!AcceptsPlayerActions) return false;
         if (target == null || target.IsDead()) return false;
         if (PlayerStats.Instance == null) return false;
         if (PlayerStats.Instance.currentMana < 1) return false;
@@ -226,6 +230,7 @@ public class CombatController : NodeContentController
         if (isBossBattle)
         {
             rewardShown = true;
+            UpdateUI();
             float exitDelay = 0f;
             foreach (RoguelikeEnemyPresentation visual in GetComponentsInChildren<RoguelikeEnemyPresentation>())
                 exitDelay = Mathf.Max(exitDelay, visual.RemainingDeathDuration);
@@ -414,13 +419,15 @@ public class CombatController : NodeContentController
 
     private Vector3 GetEnemyPosition(int index, int count)
     {
-        float spacing = 2.5f;
+        float spacing = 3.2f;
         float startX = -((count - 1) * spacing) * 0.5f;
-        return new Vector3(startX + index * spacing, 1.05f, 0f);
+        return new Vector3(startX + index * spacing, 0.35f, 0f);
     }
 
     private void UpdateUI()
     {
+        if (basicAttackButton != null) basicAttackButton.interactable = AcceptsPlayerActions;
+        if (endTurnButton != null) endTurnButton.interactable = AcceptsPlayerActions;
         if (PlayerStats.Instance != null && playerStatsText != null)
         {
             PlayerStats player = PlayerStats.Instance;
@@ -462,7 +469,10 @@ public class CombatController : NodeContentController
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
