@@ -6,6 +6,7 @@ public static class CardResourceUtility
     private static readonly Dictionary<string, string> PrefabAliases = new Dictionary<string, string>
     {
         { "神圣惩击", "神圣惩戒" },
+        { "神圣惩戒", "神圣惩击" },
         { "棘藤棒", "荆棘缠绕" },
         { "火山回响", "火山" },
         { "晨曦护符", "圣光庇护" },
@@ -54,6 +55,13 @@ public static class CardResourceUtility
     public static GameObject LoadCardPrefab(string cardName)
     {
         if (string.IsNullOrEmpty(cardName)) return null;
-        return Resources.Load<GameObject>("CardPrefabs/" + cardName);
+
+        GameObject prefab = Resources.Load<GameObject>("CardPrefabs/" + cardName);
+        if (prefab != null) return prefab;
+
+        if (PrefabAliases.TryGetValue(cardName, out string aliasName) && aliasName != cardName)
+            return Resources.Load<GameObject>("CardPrefabs/" + aliasName);
+
+        return null;
     }
 }

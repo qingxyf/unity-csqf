@@ -40,6 +40,10 @@ public class RoguelikeResultPanel : MonoBehaviour
             newRunButton.onClick.AddListener(newRun);
         if (returnToMenu != null)
             returnToMenuButton.onClick.AddListener(returnToMenu);
+        returnToMenuButton.gameObject.SetActive(Application.platform != RuntimePlatform.WebGLPlayer);
+        newRunButton.GetComponent<RectTransform>().anchoredPosition = Application.platform == RuntimePlatform.WebGLPlayer
+            ? new Vector2(0f, -135f)
+            : new Vector2(-125f, -135f);
     }
 
     public void Hide()

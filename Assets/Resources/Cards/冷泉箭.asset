@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 冷泉箭
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 冷泉箭
   element: 3
   description: 造成14点冰霜伤害并施加[冰霜]，获得[冷泉]
   cost: 1
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: b0661347370417a4b9d73f3a4e364dc3, type: 3}
   effectId: 冷泉箭
   effect: {fileID: 0}

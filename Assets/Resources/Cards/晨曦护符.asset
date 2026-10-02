@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 晨曦护符
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 晨曦护符
   element: 0
   description: 获得12护盾，若自身已有护盾，则回复8生命
   cost: 1
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 9fd852e7b4a9419488648d0379144e31, type: 3}
   effectId: 晨曦护符
   effect: {fileID: 0}

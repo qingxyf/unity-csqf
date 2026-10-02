@@ -364,3 +364,114 @@ public class DodgeEdgeEffect : CardEffect
         return "结束回合，保留最多2点能量并获得等量护盾；若下回合未损失生命，将本牌洗入抽牌堆";
     }
 }
+
+public class MorningGlowBulwarkEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Player == null) return;
+
+        bool wasShielded = context.Player.currentShield > 0;
+        context.Player.AddShield(10);
+        if (wasShielded)
+            context.Player.delayedHealNextTurn += 10;
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        return "获得10护盾；若已有护盾，下回合回复10生命";
+    }
+}
+
+public class CinderRushEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Target == null) return;
+
+        int damage = context.Target.HasStatus(StatusType.Burn) ? 30 : 18;
+        context.Target.TakeDamage(damage, DamageType.Fire);
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        int damage = 18 + CollectibleManager.GetDamageBonus(DamageType.Fire);
+        if (context != null && context.Target != null && context.Target.HasStatus(StatusType.Burn))
+            damage += 12;
+        return $"造成{damage}点火焰伤害；若目标有[烧伤]，额外造成12点火焰伤害";
+    }
+}
+
+public class ThornRenewalEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Player == null) return;
+
+        context.Player.Heal(12);
+        context.Player.AddShield(8);
+        context.Player.thornCounterAttackDamage = Mathf.Max(context.Player.thornCounterAttackDamage, 6);
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        return "回复12生命并获得8护盾；本回合受击时反击6点生机伤害";
+    }
+}
+
+public class FrostTideLoopEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Target == null) return;
+
+        bool wasFrosted = context.Target.HasStatus(StatusType.Frost);
+        context.Target.TakeDamage(14, DamageType.Ice);
+        context.Target.ApplyStatus(StatusType.Frost, 2);
+        if (wasFrosted && context.Player != null)
+            context.Player.RestoreMana(1);
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        int damage = 14 + CollectibleManager.GetDamageBonus(DamageType.Ice);
+        return $"造成{damage}点冰霜伤害并施加[冰霜]；若目标已有[冰霜]，获得1点能量";
+    }
+}
+
+public class UmbralHarvestEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Target == null) return;
+
+        int damage = 20 + Mathf.Min(3, context.Target.CountDebuffs()) * 6;
+        context.Target.TakeDamage(damage, DamageType.Shadow);
+        if (context.Player != null)
+            context.Player.Heal(damage / 2);
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        int debuffs = context != null && context.Target != null ? Mathf.Min(3, context.Target.CountDebuffs()) : 0;
+        int damage = 20 + debuffs * 6 + CollectibleManager.GetDamageBonus(DamageType.Shadow);
+        return $"造成{damage}点暗影伤害；目标每有1个负面效果额外造成6点（最多3个），回复基础结算伤害一半";
+    }
+}
+
+public class JourneySupplyEffect : CardEffect
+{
+    public override void Execute(CardEffectContext context)
+    {
+        if (context.Player == null) return;
+
+        context.Player.extraDrawsNextTurn += 1;
+        if (context.Player.currentMana == 0)
+            context.Player.extraManaNextTurn += 1;
+    }
+
+    public override string GetPreviewDescription(CardPreviewContext context)
+    {
+        return "下回合开始时摸1张牌；若本回合能量已用尽，额外获得1点能量";
+    }
+}

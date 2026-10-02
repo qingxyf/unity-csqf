@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 灼心斩
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 灼心斩
   element: 1
   description: 造成攻击力+18点火焰伤害，若目标有[烧伤]，移除[烧伤]并额外造成22点火焰伤害
   cost: 3
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
   effectId: 灼心斩
   effect: {fileID: 0}

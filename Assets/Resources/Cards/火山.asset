@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u706B\u5C71"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u706B\u5C71"
   element: 1
   description: "\u5BF9\u6240\u6709\u654C\u4EBA\u9020\u6210 40\u70B9\u8303\u56F4\u706B\u7130\u4F24\u5BB3\uFF0C\u4E14\u83B7\u5F97[\u70E7\u4F24]"
   cost: 5
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
+  effectId: 火山

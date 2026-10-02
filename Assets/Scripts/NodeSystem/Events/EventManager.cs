@@ -64,7 +64,7 @@ public class EventManager : NodeContentController
             return;
         }
 
-        currentEvent = eventPool[Random.Range(0, eventPool.Count)];
+        currentEvent = EventPool.Draw(eventPool);
         DisplayEvent(currentEvent);
     }
 
@@ -237,8 +237,8 @@ public class EventManager : NodeContentController
         if (choice.grantCollectible)
         {
             CollectibleData collectible = CollectibleManager.CreateRandomCollectible();
-            CollectibleManager.AddCollectible(collectible);
-            lastGrantedCollectibleName = collectible != null ? collectible.collectibleName : null;
+            if (CollectibleManager.AddCollectible(collectible))
+                lastGrantedCollectibleName = collectible.collectibleName;
         }
 
         DeckManager deck = DeckManager.Instance;
@@ -305,45 +305,9 @@ public class EventManager : NodeContentController
             eventPool = loaded.ToList();
 
         if (eventPool.Count == 0)
-            eventPool = EventLibrary.CreateDefaultEvents();
-
-        EnsureCollectibleChoices(eventPool);
-    }
-
-    private void EnsureCollectibleChoices(List<EventData> events)
-    {
-        if (events == null) return;
-        if (events.Any(evt => evt != null && evt.choices != null &&
-            evt.choices.Any(choice => choice != null && choice.grantCollectible)))
-            return;
-
-        int marked = 0;
-        foreach (EventData evt in events)
         {
-            if (evt == null || evt.choices == null) continue;
-
-            foreach (EventChoice choice in evt.choices)
-            {
-                if (choice == null) continue;
-                if (!ShouldAutoGrantCollectible(choice)) continue;
-
-                choice.grantCollectible = true;
-                marked++;
-                break;
-            }
-
-            if (marked >= 4) break;
+            eventPool = EventPool.GetOrCreateRuntimeFallback();
         }
-    }
-
-    private bool ShouldAutoGrantCollectible(EventChoice choice)
-    {
-        if (choice.isGamble && choice.cardsToDraw >= 3) return true;
-        if (choice.healthChange < 0 && choice.cardsToDraw >= 3) return true;
-        if (choice.maxHealthChange < 0 && choice.cardsToDraw >= 3) return true;
-        if (choice.cardsToRemove >= 2 && choice.maxHealthChange > 0) return true;
-        if (choice.useRewardElement && choice.cardsToDraw >= 2 && choice.healthChange <= 0) return true;
-        return false;
     }
 
     private void EnsureRuntimeUI()

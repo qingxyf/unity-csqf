@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u6FC0\u6D41\u51B2\u5237"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u6FC0\u6D41\u51B2\u5237"
   element: 3
   description: "\u9020\u6210 50\u70B9\u51B0\u971C\u4F24\u5BB3\uFF0C\u5982\u679C\u51FB\u6740\u654C\u4EBA\uFF0C\u5219\u56DE\u590D3\u70B9\u80FD\u91CF\u548C20\u70B9\u751F\u547D"
   cost: 3
-  effectId: 
+  cardArt: {fileID: 21300000, guid: b0661347370417a4b9d73f3a4e364dc3, type: 3}
+  effectId: 激流冲刷

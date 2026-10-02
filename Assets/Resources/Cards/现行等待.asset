@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u73B0\u884C\u7B49\u5F85"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u73B0\u884C\u7B49\u5F85"
   element: 5
   description: "\u7ED3\u675F\u56DE\u5408\uFF0C\u4E0B\u56DE\u5408\u989D\u5916\u83B7\u5F97x\u70B9\u6CD5\u529B\uFF08x\u4E3A\u672C\u56DE\u5408\u672A\u4F7F\u7528\u6CD5\u529B\u503C+2\uFF09"
   cost: 0
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 6d51b8b3b41a2284485d804c6b2d5541, type: 3}
+  effectId: 现行等待

@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u6697\u5F71\u4FB5\u8680"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u6697\u5F71\u4FB5\u8680"
   element: 4
   description: "\u9020\u6210 20\u70B9\u6697\u5F71\u4F24\u5BB3 \uFF0C\u4EE4\u5BF9\u65B9\u83B7\u5F97[\u8150\u8680]"
   cost: 1
-  effectId: 
+  cardArt: {fileID: 21300000, guid: eb55d0e8e32f3f3418e6179a5f826cc3, type: 3}
+  effectId: 暗影侵蚀

@@ -17,6 +17,7 @@ public static class CardEffectCatalog
         { "虔心吟诵", typeof(DevoutChantEffect) },
         { "照耀的荣光", typeof(ShiningGloryEffect) },
         { "火山回响", typeof(VolcanoEchoEffect) },
+        { "晨辉壁垒", typeof(MorningGlowBulwarkEffect) },
 
         { "二重吟唱", typeof(DoubleChantEffect) },
         { "火焰护盾", typeof(FlameShieldEffect) },
@@ -27,6 +28,7 @@ public static class CardEffectCatalog
         { "余烬连唱", typeof(EmberChantEffect) },
         { "焦土火环", typeof(ScorchedRingEffect) },
         { "灼心斩", typeof(SearingHeartSlashEffect) },
+        { "焚烬突袭", typeof(CinderRushEffect) },
 
         { "生命滋养", typeof(LifeNourishEffect) },
         { "荆棘缠绕", typeof(ThornEntangleEffect) },
@@ -38,6 +40,7 @@ public static class CardEffectCatalog
         { "生命之树", typeof(TreeOfLifeEffect) },
         { "无声润物", typeof(SilentMoistureEffect) },
         { "棘藤棒", typeof(ThornStaffEffect) },
+        { "荆棘复苏", typeof(ThornRenewalEffect) },
 
         { "冰霜箭", typeof(FrostArrowEffect) },
         { "寒冰护体", typeof(IceBarrierEffect) },
@@ -48,6 +51,7 @@ public static class CardEffectCatalog
         { "冷泉箭", typeof(ColdSpringArrowEffect) },
         { "潮汐护幕", typeof(TidalVeilEffect) },
         { "断浪回能", typeof(WaveEnergyEffect) },
+        { "霜潮回环", typeof(FrostTideLoopEffect) },
 
         { "暗影侵蚀", typeof(ShadowErosionEffect) },
         { "暗夜突袭", typeof(NightRaidEffect) },
@@ -58,6 +62,7 @@ public static class CardEffectCatalog
         { "未完成之咒", typeof(UnfinishedCurseEffect) },
         { "吞噬生命", typeof(DevourLifeEffect) },
         { "绝望深渊", typeof(DespairAbyssEffect) },
+        { "幽影收割", typeof(UmbralHarvestEffect) },
 
         { "无中生有", typeof(CreateFromNothingEffect) },
         { "粮草先行", typeof(SupplyFirstEffect) },
@@ -66,7 +71,8 @@ public static class CardEffectCatalog
         { "精打细算", typeof(CarefulCalculationEffect) },
         { "行囊整理", typeof(PackSortEffect) },
         { "粮线补给", typeof(SupplyLineEffect) },
-        { "暂避锋芒", typeof(DodgeEdgeEffect) }
+        { "暂避锋芒", typeof(DodgeEdgeEffect) },
+        { "远行补给", typeof(JourneySupplyEffect) }
     };
 
     private static readonly Dictionary<string, CardEffect> RuntimeEffects = new Dictionary<string, CardEffect>();

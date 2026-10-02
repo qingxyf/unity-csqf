@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 暂避锋芒
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 暂避锋芒
   element: 5
   description: 结束回合，保留最多2点能量并获得等量护盾；若下回合未损失生命，将本牌洗入抽牌堆
   cost: 0
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 6d51b8b3b41a2284485d804c6b2d5541, type: 3}
   effectId: 暂避锋芒
   effect: {fileID: 0}

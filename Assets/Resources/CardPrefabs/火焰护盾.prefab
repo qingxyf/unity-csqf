@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2227467502073562438}
   - component: {fileID: 4729896362183803846}
   m_Layer: 0
-  m_Name: "\u706B\u7130\u62A4\u76FE"
+  m_Name: "\u706b\u7130\u62a4\u76fe"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -97,8 +97,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 64c9ace11143fd04db352025fbaf0002, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   nameText: {fileID: 2418592406246955033}
   descriptionText: {fileID: 6798735307060080628}
   costText: {fileID: 7745319555962525989}
@@ -158,8 +158,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -168,7 +168,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u706B\u7130\u62A4\u76FE"
+  m_text: "\u706b\u7130\u62a4\u76fe"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}
   m_sharedMaterial: {fileID: 5405361247077733778, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}
@@ -292,8 +292,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -302,7 +302,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 20
+  m_text: "2"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7071615201164bd45877cd86d7a4eb78, type: 2}
   m_sharedMaterial: {fileID: 558493206256807409, guid: 7071615201164bd45877cd86d7a4eb78, type: 2}
@@ -445,8 +445,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
@@ -468,8 +468,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42784cf147c0c48a680349fa168899, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_IgnoreReversedGraphics: 1
   m_BlockingObjects: 0
   m_BlockingMask:
@@ -530,8 +530,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_Name:
+  m_EditorClassIdentifier:
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
@@ -540,7 +540,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u83B7\u5F97 25\u62A4\u76FE\uFF0C\u76F4\n\u5230\u4E0B\u56DE\u5408\u5F00\u59CB\u53D7\u5230\u653B\n\u51FB\u65F6\u4EE4\u5176\u83B7\u5F97[\u70E7\u4F24\n]"
+  m_text: "\u83b7\u5f97 10\u62a4\u76fe\uff0c\u76f4\u5230\u4e0b\u56de\u5408\u5f00\u59cb\u53d7\u5230\u653b\u51fb\u65f6\u4ee4\u4f24\u5bb3\u6765\u6e90\u83b7\u5f97[\u70e7\u4f24]"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}
   m_sharedMaterial: {fileID: 5405361247077733778, guid: 82dd7b6e2c59ef14591d065ae6dfcc6b, type: 2}

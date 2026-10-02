@@ -45,11 +45,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   eliteEnemyCount: 1
-  cardsPerTurn: 5
-  enemyPrefab: {fileID: 0}
+  cardsPerTurn: 2
+  enemyPrefab: {fileID: 100000, guid: f4d74bd950ac5963a7a0086031385260, type: 3}
   autoCreateManagers: 1
   normalEnemyCount: 1
-  isEliteBattle: 1
+  isEliteBattle: 0
+  isBossBattle: 1
   playerStatsText: {fileID: 0}
   deckStatsText: {fileID: 0}
   autoBuildUI: 1

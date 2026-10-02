@@ -251,6 +251,8 @@ public class CombatController : NodeContentController
         {
             collectibleReward = CollectibleManager.CreateRandomCollectible();
             CollectibleManager.AddCollectible(collectibleReward);
+            if (collectibleReward == null && PlayerStats.Instance != null)
+                PlayerStats.Instance.GainGold(25);
         }
 
         DeckManager.Instance.EndCombat();
@@ -265,7 +267,7 @@ public class CombatController : NodeContentController
         RewardChoiceUI reward = rewardObject.AddComponent<RewardChoiceUI>();
         reward.BindNode(BoundNode, BoundSessionToken);
         reward.title = isEliteBattle
-            ? $"精英奖励  +{goldReward} 金币  +{collectibleReward.collectibleName}"
+            ? $"精英奖励  +{goldReward} 金币  +{(collectibleReward != null ? collectibleReward.collectibleName : "25 金币（藏品已集齐）") }"
             : $"战斗奖励  +{goldReward} 金币";
         reward.choiceCount = isEliteBattle ? 4 : 3;
         reward.maxPicks = 2;
@@ -277,6 +279,9 @@ public class CombatController : NodeContentController
     private void SpawnDefaultEnemies()
     {
         int count = isBossBattle ? 1 : (isEliteBattle ? eliteEnemyCount : normalEnemyCount);
+        if (enemyPrefab == null)
+            enemyPrefab = Resources.Load<GameObject>("Enemies/" +
+                (isBossBattle ? "EclipseArchivist" : (isEliteBattle ? "CopperplumeDuelist" : "DuskScavenger")));
         if (enemyPrefab == null)
         {
             for (int i = 0; i < count; i++)
@@ -291,7 +296,10 @@ public class CombatController : NodeContentController
             enemyObject.transform.localPosition = GetEnemyPosition(i, count);
             Enemy enemy = enemyObject.GetComponent<Enemy>();
             if (enemy != null)
+            {
                 ConfigureEnemy(enemy, i);
+                if (enemy.hpText == null) CreateRuntimeEnemyHealthLabel(enemyObject, enemy);
+            }
         }
     }
 
@@ -354,19 +362,19 @@ public class CombatController : NodeContentController
     {
         GameObject canvasObject = new GameObject("EnemyHealthCanvas");
         canvasObject.transform.SetParent(enemyObject.transform, false);
-        canvasObject.transform.localPosition = new Vector3(0f, -0.78f, 0f);
+        canvasObject.transform.localPosition = new Vector3(0f, -1.65f, 0f);
         canvasObject.transform.localScale = new Vector3(0.01f, 0.01f, 1f);
 
         Canvas canvas = canvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.sortingOrder = 10;
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(140f, 36f);
+        canvasRect.sizeDelta = new Vector2(180f, 78f);
 
         GameObject textObject = new GameObject("HPText");
         textObject.transform.SetParent(canvasObject.transform, false);
         TextMeshProUGUI hpText = textObject.AddComponent<TextMeshProUGUI>();
-        hpText.fontSize = 22;
+        hpText.fontSize = 18;
         hpText.alignment = TextAlignmentOptions.Center;
         hpText.color = Color.white;
         hpText.raycastTarget = false;
@@ -374,12 +382,13 @@ public class CombatController : NodeContentController
         hpText.rectTransform.anchoredPosition = Vector2.zero;
 
         enemy.hpText = hpText;
-        hpText.text = $"{enemy.currentHealth}/{enemy.maxHealth}（护盾:{enemy.currentShield}）";
+        hpText.text = $"{enemy.enemyName}\n生命 {enemy.currentHealth}/{enemy.maxHealth}  护盾 {enemy.currentShield}\n意图：攻击 {enemy.GetAttackDamage()}";
     }
 
     private void ConfigureEnemy(Enemy enemy, int index)
     {
-        enemy.enemyName = isBossBattle ? "卡牌 Boss" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
+        if (string.IsNullOrEmpty(enemy.enemyName) || enemy.enemyName == "Enemy")
+            enemy.enemyName = isBossBattle ? "终途领袖" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
         enemy.maxHealth = isBossBattle ? 320 : (isEliteBattle ? 120 + index * 20 : 70 + index * 15);
         enemy.baseAttack = isBossBattle ? 26 : (isEliteBattle ? 18 + index * 3 : 10 + index * 2);
         enemy.currentHealth = enemy.maxHealth;
@@ -391,8 +400,9 @@ public class CombatController : NodeContentController
 
     private Vector3 GetEnemyPosition(int index, int count)
     {
-        float startX = -((count - 1) * 1.8f) * 0.5f;
-        return new Vector3(startX + index * 1.8f, 1.2f, 0f);
+        float spacing = 2.5f;
+        float startX = -((count - 1) * spacing) * 0.5f;
+        return new Vector3(startX + index * spacing, 1.05f, 0f);
     }
 
     private void UpdateUI()

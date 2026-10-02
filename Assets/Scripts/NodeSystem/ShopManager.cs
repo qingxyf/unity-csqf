@@ -130,6 +130,9 @@ public class ShopManager : NodeContentController
     private void CreateCollectibleOffer()
     {
         collectibleOffer = CollectibleManager.CreateRandomCollectible();
+        if (collectibleOffer == null)
+            return;
+
         int price = ApplyShopDiscount(collectibleOffer.shopPrice);
         GameObject buttonObject = Instantiate(offerButtonPrefab, offerContainer);
         buttonObject.SetActive(true);
@@ -185,7 +188,12 @@ public class ShopManager : NodeContentController
             return;
         }
 
-        CollectibleManager.AddCollectible(collectible);
+        if (!CollectibleManager.AddCollectible(collectible))
+        {
+            PlayerStats.Instance.GainGold(price);
+            if (button != null) button.interactable = true;
+            return;
+        }
         Destroy(buttonObject);
         UpdateTitle();
     }

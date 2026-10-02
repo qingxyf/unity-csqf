@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 苔痕愈合
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 苔痕愈合
   element: 2
   description: 回复18生命，若生命低于50%，获得10护盾
   cost: 1
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: e364b5b0d092b9e4a95626e535d778d7, type: 3}
   effectId: 苔痕愈合
   effect: {fileID: 0}

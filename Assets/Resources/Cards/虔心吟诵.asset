@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u8654\u5FC3\u541F\u8BF5"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u8654\u5FC3\u541F\u8BF5"
   element: 0
   description: "\u5BF9\u4E00\u540D\u654C\u4EBA\u9020\u621040\u70B9\u5723\u5149\u4F24\u5BB3\uFF0C\u5E76\u5EF6\u957F\u5BF9\u65B9\u6240\u6709\u6548\u679C1\u56DE\u5408"
   cost: 4
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 9fd852e7b4a9419488648d0379144e31, type: 3}
+  effectId: 虔心吟诵

@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u7167\u8000\u7684\u8363\u5149"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u7167\u8000\u7684\u8363\u5149"
   element: 0
   description: "\u5BF9\u6240\u6709\u654C\u4EBA\u9020\u621060\u70B9\u5723\u5149\u4F24\u5BB3\uFF0C\u5982\u679C\u672A\u51FB\u6740\u654C\u4EBA\uFF0C\u5219\u672C\u6B21\u5BF9\u6218\u8FD9\u5F20\u724C\u4F24\u5BB3-10"
   cost: 5
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 9fd852e7b4a9419488648d0379144e31, type: 3}
+  effectId: 照耀的荣光

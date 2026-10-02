@@ -18,6 +18,13 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private List<StatusEffect> activeEffects = new List<StatusEffect>();
     private bool healthInitialized;
+    private bool dying;
+    private RoguelikeEnemyPresentation presentation;
+
+    private void Awake()
+    {
+        presentation = GetComponent<RoguelikeEnemyPresentation>();
+    }
 
     public DamageType lastDamageType = DamageType.Physical;
     public bool spreadDamageToNeighbors = false;
@@ -39,8 +46,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private void Start()
     {
-        currentHealth = maxHealth;
-        healthInitialized = true;
+        EnsureHealthInitialized();
         UpdateUI();
     }
 
@@ -60,6 +66,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private void TakeDamageInternal(int damage, DamageType type, bool isSplash)
     {
+        if (dying) return;
         if (PlayerStats.Instance != null && !HasStatus(StatusType.Purified))
         {
             if (type == DamageType.Fire)
@@ -149,18 +156,21 @@ public class Enemy : MonoBehaviour, IDamageable
         }
 
         currentHealth -= damage;
+        ShowFloatingText(damage.ToString(), Color.red);
+        UpdateUI();
         if (currentHealth <= 0)
         {
             currentHealth = 0;
+            UpdateUI();
             Die();
+            return;
         }
-
-        ShowFloatingText(damage.ToString(), Color.red);
-        UpdateUI();
+        if (damage > 0 && presentation != null) presentation.PlayHit();
     }
 
     public void Heal(int amount)
     {
+        if (dying) return;
         if (HasStatus(StatusType.Bleed))
         {
             ShowFloatingText("Bleeding!", Color.gray);
@@ -176,12 +186,14 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void AddShield(int amount)
     {
+        if (dying) return;
         currentShield += amount;
         UpdateUI();
     }
 
     public void ApplyStatus(StatusType type, int duration, int value = 0)
     {
+        if (dying) return;
         RemoveEffect(type);
 
         var effect = StatusEffectFactory.Create(type, duration, value);
@@ -196,8 +208,10 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void ProcessTurnStart()
     {
+        if (dying) return;
         foreach (var effect in new List<StatusEffect>(activeEffects))
         {
+            if (dying) break;
             effect.OnTurnStart(this);
         }
         UpdateUI();
@@ -205,8 +219,10 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public void ProcessTurnEnd()
     {
+        if (dying) return;
         foreach (var effect in new List<StatusEffect>(activeEffects))
         {
+            if (dying) break;
             effect.OnTurnEnd(this);
             effect.TickDuration();
         }
@@ -232,6 +248,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
         if (PlayerStats.Instance != null)
         {
+            if (presentation != null) presentation.PlayAttack();
             PlayerStats.Instance.TakeDamage(dmg, gameObject);
             hasDealtDamage = true;
         }
@@ -245,6 +262,7 @@ public class Enemy : MonoBehaviour, IDamageable
     public int GetMaxHealth() => maxHealth;
     public bool IsDead()
     {
+        if (dying) return true;
         EnsureHealthInitialized();
         return currentHealth <= 0;
     }
@@ -305,7 +323,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public bool CanAct()
     {
-        return !HasStatus(StatusType.Freeze) &&
+        return !IsDead() && !HasStatus(StatusType.Freeze) &&
                !HasStatus(StatusType.Stun) &&
                !HasStatus(StatusType.Rooted) &&
                !HasStatus(StatusType.Silenced);
@@ -331,6 +349,10 @@ public class Enemy : MonoBehaviour, IDamageable
 
     private void Die()
     {
+        if (dying) return;
+        dying = true;
+        if (EnemyManager.Instance != null) EnemyManager.Instance.Unregister(this);
+        foreach (Collider2D collider in GetComponentsInChildren<Collider2D>()) collider.enabled = false;
         Debug.Log($"{enemyName} Died!");
 
         if (CardEffectManager.Instance != null)
@@ -344,7 +366,10 @@ public class Enemy : MonoBehaviour, IDamageable
         }
 
         if (Application.isPlaying)
-            Destroy(gameObject);
+        {
+            if (presentation != null) presentation.PlayDeath();
+            Destroy(gameObject, presentation != null ? presentation.DeathDuration : 0f);
+        }
         else
             DestroyImmediate(gameObject);
     }
@@ -375,7 +400,8 @@ public class Enemy : MonoBehaviour, IDamageable
     {
         if (hpText != null)
         {
-            hpText.text = $"{currentHealth}/{maxHealth} (Shield: {currentShield})";
+            hpText.text = $"{enemyName}\n生命 {currentHealth}/{maxHealth}  护盾 {currentShield}\n" +
+                (CanAct() ? $"意图：攻击 {GetAttackDamage()}" : "意图：无法行动");
         }
     }
 

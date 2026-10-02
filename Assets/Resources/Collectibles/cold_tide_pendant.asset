@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c774b2443a244ef9e8898e3effc1787, type: 3}
+  m_Name: cold_tide_pendant
+  collectibleId: cold_tide_pendant
+  collectibleName: 寒潮坠饰
+  description: 每回合第一张水系卡牌费用 -1。
+  effectType: 3
+  amount: 1
+  element: 3
+  damageType: 0
+  shopPrice: 130

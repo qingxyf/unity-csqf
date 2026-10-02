@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 余烬连唱
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 余烬连唱
   element: 1
   description: 造成48点火焰伤害，本回合每使用1张火牌，本牌费用-1
   cost: 5
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
   effectId: 余烬连唱
   effect: {fileID: 0}

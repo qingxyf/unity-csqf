@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 月影潜袭
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 月影潜袭
   element: 4
   description: 造成20点暗影伤害，并随机施加[虚弱]、[流血]、[腐蚀]之一
   cost: 2
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: eb55d0e8e32f3f3418e6179a5f826cc3, type: 3}
   effectId: 月影潜袭
   effect: {fileID: 0}

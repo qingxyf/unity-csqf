@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u70B9\u71C3"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u70B9\u71C3"
   element: 1
   description: "\u9020\u621020\u706B\u7130\u4F24\u5BB3\uFF0C\u4EE4\u5176\u4E0B\u6B21\u53D7\u5230\u7684\u706B\u7130\u4F24\u5BB3+10\uFF0C\u5E76\u4EE4\u76F8\u90BB\u654C\u4EBA\u627F\u53D710\u70B9\u4F24\u5BB3"
   cost: 3
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
+  effectId: 点燃

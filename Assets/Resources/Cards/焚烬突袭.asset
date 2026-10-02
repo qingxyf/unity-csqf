@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
+  m_Name: 焚烬突袭
+  m_EditorClassIdentifier:
+  cardName: 焚烬突袭
+  element: 1
+  description: 造成18点火焰伤害；若目标有[烧伤]，额外造成12点火焰伤害
+  cost: 2
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
+  effectId: 焚烬突袭
+  effect: {fileID: 0}
+  upgradeLevel: 0
+  baseCardName:

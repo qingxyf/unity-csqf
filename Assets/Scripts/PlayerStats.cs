@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Linq;
 
 public class PlayerStats : MonoBehaviour, IDamageable
 {
@@ -483,21 +484,6 @@ public enum CollectibleEffectType
     ShopDiscountPercent
 }
 
-[CreateAssetMenu(fileName = "NewCollectible", menuName = "Roguelike/Collectible")]
-public class CollectibleData : ScriptableObject
-{
-    public string collectibleId;
-    public string collectibleName;
-    public Sprite icon;
-    [TextArea(2, 4)]
-    public string description;
-    public CollectibleEffectType effectType;
-    public int amount;
-    public CardElement element = CardElement.Neutral;
-    public DamageType damageType = DamageType.Physical;
-    public int shopPrice = 100;
-}
-
 public static class CollectibleManager
 {
     private static readonly List<CollectibleData> ownedCollectibles = new List<CollectibleData>();
@@ -532,9 +518,10 @@ public static class CollectibleManager
         Clear();
     }
 
-    public static void AddCollectible(CollectibleData collectible)
+    public static bool AddCollectible(CollectibleData collectible)
     {
-        if (collectible == null) return;
+        if (collectible == null || string.IsNullOrEmpty(collectible.collectibleId)) return false;
+        if (ownedCollectibles.Exists(existing => existing != null && existing.collectibleId == collectible.collectibleId)) return false;
         ownedCollectibles.Add(collectible);
 
         if (collectible.effectType == CollectibleEffectType.MaxHealth && PlayerStats.Instance != null)
@@ -542,6 +529,8 @@ public static class CollectibleManager
 
         if (collectible.effectType == CollectibleEffectType.MaxMana && PlayerStats.Instance != null)
             PlayerStats.Instance.IncreaseMaxMana(collectible.amount);
+
+        return true;
     }
 
     public static void OnPlayerTurnStart()
@@ -641,116 +630,57 @@ public static class CollectibleManager
 
     public static CollectibleData CreateRandomCollectible()
     {
-        CollectibleData[] pool =
-        {
-            CreateMaxHealthCollectible(),
-            CreateGreaterMaxHealthCollectible(),
-            CreateMaxManaCollectible(),
-            CreateStartShieldCollectible(),
-            CreateFireDamageCollectible(),
-            CreateWaterDiscountCollectible(),
-            CreateShopDiscountCollectible()
-        };
+        List<CollectibleData> authored = Resources.LoadAll<CollectibleData>("Collectibles").ToList();
+        List<CollectibleData> candidates = authored.Count > 0
+            ? authored.FindAll(data => data != null && !IsOwned(data.collectibleId))
+            : CollectibleCatalog.Ids.Where(id => !IsOwned(id)).Select(CollectibleCatalog.CreateFallback).ToList();
+        if (candidates.Count == 0) return null;
 
-        return pool[Random.Range(0, pool.Length)];
+        CollectibleData selected = candidates[Random.Range(0, candidates.Count)];
+        if (authored.Count > 0)
+            selected = Instantiate(selected);
+        CollectibleCatalog.EnsureIcon(selected);
+        return RegisterRuntimeCollectible(selected);
+    }
+
+    private static bool IsOwned(string id)
+    {
+        return !string.IsNullOrEmpty(id) && ownedCollectibles.Exists(data => data != null && data.collectibleId == id);
     }
 
     public static CollectibleData CreateMaxHealthCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "life_specimen";
-        collectible.collectibleName = "生命标本";
-        collectible.icon = LoadCollectibleIcon("life_specimen");
-        collectible.description = "最大生命值 +15。";
-        collectible.effectType = CollectibleEffectType.MaxHealth;
-        collectible.amount = 15;
-        collectible.shopPrice = 110;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("life_specimen"));
     }
 
     public static CollectibleData CreateGreaterMaxHealthCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "vital_core";
-        collectible.collectibleName = "活力核心";
-        collectible.icon = LoadCollectibleIcon("vital_core");
-        collectible.description = "最大生命值 +25。";
-        collectible.effectType = CollectibleEffectType.MaxHealth;
-        collectible.amount = 25;
-        collectible.shopPrice = 160;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("vital_core"));
     }
 
     public static CollectibleData CreateMaxManaCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "energy_core";
-        collectible.collectibleName = "能量核心";
-        collectible.icon = LoadCollectibleIcon("energy_core");
-        collectible.description = "能量上限 +1，并获得 1 点当前能量。";
-        collectible.effectType = CollectibleEffectType.MaxMana;
-        collectible.amount = 1;
-        collectible.shopPrice = 150;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("energy_core"));
     }
 
     public static CollectibleData CreateStartShieldCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "aegis_shard";
-        collectible.collectibleName = "圣盾碎片";
-        collectible.icon = LoadCollectibleIcon("aegis_shard");
-        collectible.description = "每场战斗开始时获得 8 点护盾。";
-        collectible.effectType = CollectibleEffectType.StartShield;
-        collectible.amount = 8;
-        collectible.shopPrice = 90;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("aegis_shard"));
     }
 
     public static CollectibleData CreateFireDamageCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "fire_badge";
-        collectible.collectibleName = "火焰徽章";
-        collectible.icon = LoadCollectibleIcon("fire_badge");
-        collectible.description = "火焰伤害 +10。";
-        collectible.effectType = CollectibleEffectType.ElementDamageBonus;
-        collectible.damageType = DamageType.Fire;
-        collectible.amount = 10;
-        collectible.shopPrice = 120;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("fire_badge"));
     }
 
     public static CollectibleData CreateWaterDiscountCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "cold_tide_pendant";
-        collectible.collectibleName = "寒潮坠饰";
-        collectible.icon = LoadCollectibleIcon("cold_tide_pendant");
-        collectible.description = "每回合第一张水系卡牌费用 -1。";
-        collectible.effectType = CollectibleEffectType.FirstElementCardCostReduction;
-        collectible.element = CardElement.Water;
-        collectible.amount = 1;
-        collectible.shopPrice = 130;
-        return RegisterRuntimeCollectible(collectible);
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("cold_tide_pendant"));
     }
 
     public static CollectibleData CreateShopDiscountCollectible()
     {
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "old_wallet";
-        collectible.collectibleName = "旧钱包";
-        collectible.icon = LoadCollectibleIcon("old_wallet");
-        collectible.description = "商店价格 -15%。";
-        collectible.effectType = CollectibleEffectType.ShopDiscountPercent;
-        collectible.amount = 15;
-        collectible.shopPrice = 100;
-        return RegisterRuntimeCollectible(collectible);
-    }
-
-    private static Sprite LoadCollectibleIcon(string iconName)
-    {
-        return Resources.Load<Sprite>($"Icons/Collectibles/{iconName}");
+        return RegisterRuntimeCollectible(CollectibleCatalog.CreateFallback("old_wallet"));
     }
 
     private static CollectibleData RegisterRuntimeCollectible(CollectibleData collectible)

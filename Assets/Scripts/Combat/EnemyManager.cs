@@ -44,6 +44,7 @@ public class EnemyManager : MonoBehaviour
 
     public void Register(Enemy e)
     {
+        if (e == null || e.IsDead() || !e.isActiveAndEnabled) return;
         if (!ActiveEnemies.Contains(e))
             ActiveEnemies.Add(e);
     }
@@ -55,7 +56,7 @@ public class EnemyManager : MonoBehaviour
 
     public void ClearNulls()
     {
-        ActiveEnemies.RemoveAll(e => e == null);
+        ActiveEnemies.RemoveAll(e => e == null || e.IsDead() || !e.isActiveAndEnabled);
         if (ActiveEnemies.Count == 0)
             RegisterExistingEnemies();
     }

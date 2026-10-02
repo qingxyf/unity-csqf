@@ -48,6 +48,14 @@ public class RoguelikeRunController : MonoBehaviour
 
     public void ReturnToMainMenu()
     {
+        // The browser build contains only forth. Leaving it starts a fresh
+        // expedition instead of requesting an excluded legacy menu scene.
+        if (Application.platform == RuntimePlatform.WebGLPlayer)
+        {
+            StartNewRun();
+            return;
+        }
+
         ResetRunState();
         LastRequestedSceneName = mainMenuSceneName;
 
@@ -104,6 +112,7 @@ public class RoguelikeRunController : MonoBehaviour
             CardEffectManager.Instance.ResetForNewRun();
         DeckManager.Instance.ResetForNewRun();
         CollectibleManager.ResetForNewRun();
+        EventPool.ResetForNewRun();
 
         GameManager manager = ResolveGameManager();
         if (manager != null && manager.contentManager != null)

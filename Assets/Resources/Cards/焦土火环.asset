@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 焦土火环
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 焦土火环
   element: 1
   description: 对所有敌人造成26点火焰伤害并施加[烧伤]，若目标已有[烧伤]，额外造成10点火焰伤害
   cost: 4
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 360d306f07108224fafd215290f1240e, type: 3}
   effectId: 焦土火环
   effect: {fileID: 0}

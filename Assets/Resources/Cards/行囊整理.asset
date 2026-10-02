@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 行囊整理
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 行囊整理
   element: 5
   description: 弃置1张牌，摸2张牌；若弃置无属性牌，将本牌洗入抽牌堆
   cost: 0
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: 6d51b8b3b41a2284485d804c6b2d5541, type: 3}
   effectId: 行囊整理
   effect: {fileID: 0}

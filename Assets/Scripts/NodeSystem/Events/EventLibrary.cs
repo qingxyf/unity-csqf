@@ -18,7 +18,13 @@ public static class EventLibrary
             CreateElementShrine(),
             CreateMirrorMaze(),
             CreateSilentGarden(),
-            CreateStormBridge()
+            CreateStormBridge(),
+            CreateMoonlitCaravan(),
+            CreateWhisperingWell(),
+            CreateAshenForge(),
+            CreateFallenObservatory(),
+            CreateBoundSpirit(),
+            CreateSunkenSanctuary()
         };
     }
 
@@ -235,5 +241,56 @@ public static class EventLibrary
         call.rewardElement = CardElement.Shadow;
 
         return CreateEvent("暴风断桥", "断桥悬在深渊上方，雷雨把桥索打得像琴弦一样颤动。", rush, wait, call);
+    }
+
+    private static EventData CreateMoonlitCaravan()
+    {
+        EventChoice trade = Choice("交换补给", "月光商队收下了补给，交给你一件来历不明却很实用的藏品。");
+        trade.healthChange = -8; trade.grantCollectible = true;
+        EventChoice guard = Choice("守夜护卫", "你整夜未眠，但商队以坚固的护符作为酬谢。");
+        guard.shieldGain = 20; guard.cardsToDraw = 1;
+        return CreateEvent("月下商队", "一支没有车夫的商队在月光下缓慢前行，车厢里传来金币碰撞声。", trade, guard, Choice("悄然离开", "你绕过商队，继续赶路。"));
+    }
+
+    private static EventData CreateWhisperingWell()
+    {
+        EventChoice listen = Choice("倾听井底", "低语指出了你牌组中最有潜力的一张牌。");
+        listen.upgradeRandomCard = true;
+        EventChoice throwCoin = Choice("投入金币", "井水泛起涟漪，映出一件被遗忘的护符。");
+        throwCoin.healthChange = -6; throwCoin.grantCollectible = true;
+        EventChoice drink = Choice("饮一口井水", "冰凉的泉水让你恢复清醒。"); drink.healthChange = 22;
+        return CreateEvent("低语古井", "荒野中央有一口古井，井底不断传来像是你自己声音的低语。", listen, throwCoin, drink);
+    }
+
+    private static EventData CreateAshenForge()
+    {
+        EventChoice temper = Choice("淬炼一张卡牌", "灰烬熔炉吞下杂质，留下更加锋利的纹路。"); temper.upgradeRandomCard = true; temper.healthChange = -7;
+        EventChoice salvage = Choice("拆解废铁", "你从废铁中找到了可用的护甲碎片。"); salvage.shieldGain = 18; salvage.cardsToDraw = 1;
+        EventChoice take = Choice("取走炉心", "炉心在你掌中安静下来，化作永久的战利品。"); take.maxHealthChange = -5; take.grantCollectible = true;
+        return CreateEvent("灰烬熔炉", "熄灭的熔炉仍散发余温，铁砧上刻着无人能读懂的锻造符文。", temper, salvage, take);
+    }
+
+    private static EventData CreateFallenObservatory()
+    {
+        EventChoice chart = Choice("校准星图", "星图展开一条清晰的道路，你从中找到新的法术。 "); chart.cardsToDraw = 2; chart.useRewardElement = true; chart.rewardElement = CardElement.Light;
+        EventChoice gaze = Choice("凝视虚空", "群星回应了你，也带走了一点生命。 "); gaze.healthChange = -12; gaze.cardsToDraw = 3;
+        EventChoice rest = Choice("在圆顶休息", "圆顶隔绝了风雨，你重新整理了呼吸。 "); rest.healthChange = 18; rest.shieldGain = 10;
+        return CreateEvent("坠落观星台", "半座观星台嵌在山崖中，裂开的穹顶外是白昼也能看见的星河。", chart, gaze, rest);
+    }
+
+    private static EventData CreateBoundSpirit()
+    {
+        EventChoice free = Choice("解开锁链", "灵魂重获自由，留下守护你的遗物。 "); free.healthChange = -10; free.grantCollectible = true;
+        EventChoice bargain = Choice("交换记忆", "你忘记了一段无关紧要的往事，换来几张精挑细选的卡牌。 "); bargain.cardsToDraw = 2; bargain.cardsToRemove = 1;
+        EventChoice pass = Choice("不去触碰", "锁链在风中轻响，你没有回头。 "); pass.shieldGain = 12;
+        return CreateEvent("缚灵锁链", "一团幽光被锁在断柱上，它安静地等待某个人作出决定。", free, bargain, pass);
+    }
+
+    private static EventData CreateSunkenSanctuary()
+    {
+        EventChoice dive = Choice("潜入水下", "你在神殿底部找到了一只密封的宝匣。 "); dive.healthChange = -9; dive.cardsToDraw = 2; dive.grantCollectible = true;
+        EventChoice pray = Choice("向潮汐祈祷", "水流抚平伤口，带来温和的庇护。 "); pray.healthChange = 25; pray.shieldGain = 10;
+        EventChoice gather = Choice("收集珊瑚", "珊瑚的纹路引导你找到水系的力量。 "); gather.cardsToDraw = 2; gather.useRewardElement = true; gather.rewardElement = CardElement.Water;
+        return CreateEvent("沉没圣所", "潮水退去后，古老圣所的门扉从礁石间显露出来。", dive, pray, gather);
     }
 }

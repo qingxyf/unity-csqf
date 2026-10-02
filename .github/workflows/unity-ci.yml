@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,23 +13,53 @@ permissions:
 env:
   UNITY_VERSION: 2022.3.49f1
 
+concurrency:
+  group: unity-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   static:
     name: Static harness checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run architecture check
+      - name: Run static precompletion checks
         shell: pwsh
-        run: ./scripts/harness/check-architecture.ps1
+        run: ./scripts/harness/precompletion.ps1 -SkipUnity -ProjectRoot "$PWD"
 
   editmode:
     name: Unity EditMode tests
     runs-on: ubuntu-latest
     needs: static
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - uses: actions/checkout@v4
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          if [ -n "$AGENT_TOOLSDIRECTORY" ]; then
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          fi
+          sudo docker system prune --all --force --volumes
+          df -h
+      - name: Verify Unity activation configuration
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; }; then
+            echo "Configure UNITY_EMAIL and UNITY_PASSWORD plus either UNITY_LICENSE (Personal) or UNITY_SERIAL (Professional) before running Unity CI." >&2
+            exit 1
+          fi
       - name: Run EditMode tests
+        id: editmode-tests
         uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -46,12 +77,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unity-editmode-results
-          path: artifacts/editmode
+          path: ${{ steps.editmode-tests.outputs.artifactsPath }}
+          if-no-files-found: warn
 
-  build:
-    name: Standalone Windows build
+  windows:
+    name: Windows full-game build
     runs-on: ubuntu-latest
     needs: editmode
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - uses: actions/checkout@v4
       - name: Free runner disk space
@@ -66,7 +99,19 @@ jobs:
           fi
           sudo docker system prune --all --force --volumes
           df -h
-      - name: Build player
+      - name: Verify Unity activation configuration
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; }; then
+            echo "Configure UNITY_EMAIL and UNITY_PASSWORD plus either UNITY_LICENSE (Personal) or UNITY_SERIAL (Professional) before running Unity CI." >&2
+            exit 1
+          fi
+      - name: Build Windows player with all enabled scenes
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -80,7 +125,93 @@ jobs:
           buildMethod: CiBuild.PerformBuild
           customParameters: -nographics
       - name: Upload build artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qingfeng-windows-build
-          path: Builds/**/*.exe
+          path: Builds/CI
+          if-no-files-found: warn
+          compression-level: 0
+
+  webgl:
+    name: WebGL roguelike build
+    runs-on: ubuntu-latest
+    needs: editmode
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          if [ -n "$AGENT_TOOLSDIRECTORY" ]; then
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          fi
+          sudo docker system prune --all --force --volumes
+          df -h
+      - name: Verify Unity activation configuration
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; }; then
+            echo "Configure UNITY_EMAIL and UNITY_PASSWORD plus either UNITY_LICENSE (Personal) or UNITY_SERIAL (Professional) before running Unity CI." >&2
+            exit 1
+          fi
+      - name: Build forth roguelike WebGL player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: .
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: WebGL
+          buildMethod: CiBuild.PerformWebGlBuild
+          customParameters: -nographics
+      - name: Upload WebGL artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qingfeng-webgl-build
+          path: Builds/WebGL
+          if-no-files-found: warn
+
+  deploy-webgl:
+    name: Deploy WebGL to GitHub Pages
+    needs: webgl
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.webgl.result == 'success' && vars.DEPLOY_WEBGL == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Download WebGL artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: qingfeng-webgl-build
+          path: Builds/WebGL
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: Builds/WebGL
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
+  m_Name: 幽影收割
+  m_EditorClassIdentifier:
+  cardName: 幽影收割
+  element: 4
+  description: 造成20点暗影伤害；目标每有1个负面效果额外造成6点（最多3个），回复基础结算伤害一半
+  cost: 3
+  cardArt: {fileID: 21300000, guid: eb55d0e8e32f3f3418e6179a5f826cc3, type: 3}
+  effectId: 幽影收割
+  effect: {fileID: 0}
+  upgradeLevel: 0
+  baseCardName:

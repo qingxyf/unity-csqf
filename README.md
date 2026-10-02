@@ -7,6 +7,8 @@
 - [技术总览](docs/technical-overview.md)
 - [Roguelike 事件与内容](docs/roguelike/events-and-content.md)
 - [Unity 编辑器配置指南](docs/guides/unity-editor-setup.md)
+- [云端测试、WebGL 网页与 Windows 构建](docs/guides/ci-cd.md)
+- [原创战斗小人与动画](docs/roguelike/enemy-art.md)
 - [变更记录](docs/changelog.md)
 
 ## 游戏玩法
@@ -54,7 +56,7 @@
 | 暗影 (Shadow) | 腐蚀、吸血、高风险高回报 |
 | 无属性 (Neutral) | 摸牌、资源管理（使用后移出游戏） |
 
-每种元素 6 张卡牌（无属性 5 张），共 **35 张卡牌**，费用 0-5 不等。详细卡牌效果见 `Assets/Scripts/CardSystem/卡牌设计文档.md`。
+当前 Resources 池有 **61 张卡牌**，每张都有独立绑定数据的预制体。新增晨辉壁垒、焚烬突袭、荆棘复苏、霜潮回环、幽影收割与远行补给，分别覆盖六种元素。事件池共 **18 个事件**，同轮抽完前不重复；藏品池共 **15 件藏品**，抽取排除已拥有的藏品，集齐后精英奖励改为额外金币。
 
 ### 元素反应
 

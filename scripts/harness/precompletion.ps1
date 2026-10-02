@@ -18,6 +18,10 @@ Write-Host "[precompletion] lint" -ForegroundColor Cyan
 & (Join-Path $PSScriptRoot "lint.ps1") -ProjectRoot $ProjectRoot
 if (-not $?) { throw "Lint failed." }
 
+Write-Host "[precompletion] content bindings" -ForegroundColor Cyan
+& (Join-Path $PSScriptRoot "check-content.ps1") -ProjectRoot $ProjectRoot
+if (-not $?) { throw "Content binding check failed." }
+
 Write-Host "[precompletion] git diff --check" -ForegroundColor Cyan
 git -C $ProjectRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "Whitespace check failed." }

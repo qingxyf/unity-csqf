@@ -11,9 +11,10 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: "\u795E\u5723\u60E9\u51FB"
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: "\u795E\u5723\u60E9\u51FB"
   element: 0
   description: "\u5BF9\u4E00\u540D\u654C\u4EBA\u9020\u6210 30\u70B9\u5723\u5149\u4F24\u5BB3\uFF0C\u82E5\u5BF9\u65B9\u9020\u6210\u8FC7\u4F24\u5BB3\u5219\u989D\u5916\u7ED9\u4E88[\u7729\u6655]"
   cost: 2
-  effectId: 
+  cardArt: {fileID: 21300000, guid: 9fd852e7b4a9419488648d0379144e31, type: 3}
+  effectId: 神圣惩击

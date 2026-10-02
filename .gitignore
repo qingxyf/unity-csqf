@@ -51,3 +51,6 @@ Assets/dist/
 /.superpowers/
 /tmp/
 /output/
+
+# Python helper caches
+__pycache__/

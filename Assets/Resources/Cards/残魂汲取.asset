@@ -11,11 +11,11 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 031bac9c4f7ae6b4690e7cd93659ee70, type: 3}
   m_Name: 残魂汲取
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier:
   cardName: 残魂汲取
   element: 4
   description: 造成40点暗影伤害，目标每有1个负面效果额外+6，回复一半伤害
   cost: 4
-  cardArt: {fileID: 0}
+  cardArt: {fileID: 21300000, guid: eb55d0e8e32f3f3418e6179a5f826cc3, type: 3}
   effectId: 残魂汲取
   effect: {fileID: 0}

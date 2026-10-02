@@ -137,9 +137,6 @@ public class HandView : MonoBehaviour
 
         CardDisplay display = instance.GetComponentInChildren<CardDisplay>(true);
         if (display != null) display.Setup(card);
-
-        if (instance.GetComponent<CardCaster>() == null)
-            instance.AddComponent<CardCaster>();
     }
 
     private void EnsureCardRaycastTarget(GameObject instance)

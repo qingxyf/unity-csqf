@@ -18,6 +18,8 @@ public abstract class CardDisplayBase : MonoBehaviour
     {
         if (cardData == null) return;
 
+        ApplyCardArt();
+
         if (nameText != null)
         {
             nameText.text = cardData.upgradeLevel > 0
@@ -39,6 +41,20 @@ public abstract class CardDisplayBase : MonoBehaviour
 
         EnsureArtForUI();
         FixTextSizeForUI();
+    }
+
+    // Prefabs provide an element-themed fallback sprite.  A CardData reference
+    // takes precedence so reward, backpack and upgraded runtime clones retain
+    // their authored artwork even when displayed through a different prefab.
+    private void ApplyCardArt()
+    {
+        if (cardData == null || cardData.cardArt == null) return;
+
+        SpriteRenderer cardArtRenderer = GetComponent<SpriteRenderer>();
+        if (cardArtRenderer == null)
+            cardArtRenderer = GetComponentInChildren<SpriteRenderer>(true);
+        if (cardArtRenderer != null)
+            cardArtRenderer.sprite = cardData.cardArt;
     }
 
     protected abstract void FixTextSizeForUI();
