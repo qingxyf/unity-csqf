@@ -278,7 +278,8 @@ public class ShopManager : NodeContentController
         offersObject.transform.SetParent(panel.transform, false);
         RectTransform offersRect = offersObject.GetComponent<RectTransform>();
         offersRect.sizeDelta = new Vector2(720f, 540f);
-        offersRect.anchoredPosition = new Vector2(0f, 30f);
+        // Keep the first offer below the title and the last above Leave.
+        offersRect.anchoredPosition = Vector2.zero;
         VerticalLayoutGroup layout = offersObject.AddComponent<VerticalLayoutGroup>();
         // Eight default offers need to fit their 62px preferred heights inside
         // this 540px container (7 * 6px gaps leaves a small margin).

@@ -158,6 +158,14 @@ public class NodeRuntimeUiPlayModeTests
         AssertRuntimeCanvas(shop.gameObject);
         RectTransform offersRect = shop.offerContainer.GetComponent<RectTransform>();
         RectTransform leaveRect = shop.leaveButton.GetComponent<RectTransform>();
+        RectTransform panelRect = offersRect.parent as RectTransform;
+        Bounds titleBounds = GetBoundsInContainer(panelRect, shop.titleText.rectTransform);
+        foreach (Button button in buttons)
+        {
+            Bounds offerBounds = GetBoundsInContainer(panelRect, button.transform as RectTransform);
+            Assert.That(offerBounds.max.y, Is.LessThan(titleBounds.min.y),
+                "Shop offers must not cover the title or its gold count.");
+        }
         Assert.That(offersRect.anchoredPosition.y - offersRect.sizeDelta.y / 2f,
             Is.GreaterThan(leaveRect.anchoredPosition.y + leaveRect.sizeDelta.y / 2f));
 
