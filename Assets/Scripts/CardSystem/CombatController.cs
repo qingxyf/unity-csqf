@@ -381,14 +381,14 @@ public class CombatController : NodeContentController
     {
         GameObject canvasObject = new GameObject("EnemyHealthCanvas");
         canvasObject.transform.SetParent(enemyObject.transform, false);
-        canvasObject.transform.localPosition = new Vector3(0f, -1.65f, 0f);
+        canvasObject.transform.localPosition = new Vector3(0f, 2.35f, 0f);
         canvasObject.transform.localScale = new Vector3(0.01f, 0.01f, 1f);
 
         Canvas canvas = canvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.sortingOrder = 10;
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(180f, 78f);
+        canvasRect.sizeDelta = new Vector2(180f, 64f);
 
         GameObject textObject = new GameObject("HPText");
         textObject.transform.SetParent(canvasObject.transform, false);
@@ -519,7 +519,7 @@ public class CombatController : NodeContentController
         handView.arcDepth = 36f;
         handView.maxFanWidth = 860f;
         handView.hoverLift = 132f;
-        handView.hoverScale = 1.2f;
+        handView.hoverScale = 1.4f;
     }
 
     private GameObject CreatePanel(string name, Transform parent, Vector2 size, Color color)

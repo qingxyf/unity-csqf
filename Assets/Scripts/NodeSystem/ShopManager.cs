@@ -255,7 +255,10 @@ public class ShopManager : NodeContentController
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
@@ -271,17 +274,19 @@ public class ShopManager : NodeContentController
 
         titleText = CreateText("Title", panel.transform, "", 32, TextAlignmentOptions.Center, new Vector2(720f, 60f), new Vector2(0f, 305f));
 
-        GameObject offersObject = new GameObject("Offers");
+        GameObject offersObject = new GameObject("Offers", typeof(RectTransform));
         offersObject.transform.SetParent(panel.transform, false);
-        offerContainer = offersObject.transform;
-        RectTransform offersRect = offersObject.AddComponent<RectTransform>();
+        RectTransform offersRect = offersObject.GetComponent<RectTransform>();
         offersRect.sizeDelta = new Vector2(720f, 540f);
         offersRect.anchoredPosition = new Vector2(0f, 30f);
         VerticalLayoutGroup layout = offersObject.AddComponent<VerticalLayoutGroup>();
-        layout.spacing = 8f;
+        // Eight default offers need to fit their 62px preferred heights inside
+        // this 540px container (7 * 6px gaps leaves a small margin).
+        layout.spacing = 6f;
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandHeight = false;
+        offerContainer = offersObject.transform;
 
         offerButtonPrefab = CreateButtonObject("OfferButtonPrefab", "商品", new Vector2(720f, 62f));
         offerButtonPrefab.SetActive(false);
@@ -323,6 +328,9 @@ public class ShopManager : NodeContentController
         GameObject buttonObject = new GameObject(name);
         RectTransform rect = buttonObject.AddComponent<RectTransform>();
         rect.sizeDelta = size;
+        LayoutElement layoutElement = buttonObject.AddComponent<LayoutElement>();
+        layoutElement.minHeight = size.y;
+        layoutElement.preferredHeight = size.y;
         Image image = buttonObject.AddComponent<Image>();
         image.color = new Color(0.25f, 0.18f, 0.08f, 1f);
         Button button = buttonObject.AddComponent<Button>();

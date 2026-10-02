@@ -182,7 +182,10 @@ public class RewardChoiceUI : NodeContentController
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
@@ -198,10 +201,9 @@ public class RewardChoiceUI : NodeContentController
 
         titleText = CreateText("Title", panel.transform, title, 34, TextAlignmentOptions.Center, new Vector2(680f, 60f), new Vector2(0f, 200f));
 
-        GameObject choices = new GameObject("Choices");
+        GameObject choices = new GameObject("Choices", typeof(RectTransform));
         choices.transform.SetParent(panel.transform, false);
-        choiceContainer = choices.transform;
-        RectTransform choicesRect = choices.AddComponent<RectTransform>();
+        RectTransform choicesRect = choices.GetComponent<RectTransform>();
         choicesRect.sizeDelta = new Vector2(680f, 300f);
         choicesRect.anchoredPosition = new Vector2(0f, 20f);
         VerticalLayoutGroup layout = choices.AddComponent<VerticalLayoutGroup>();
@@ -209,8 +211,9 @@ public class RewardChoiceUI : NodeContentController
         layout.childControlWidth = true;
         layout.childControlHeight = true;
         layout.childForceExpandHeight = false;
+        choiceContainer = choices.transform;
 
-        choiceButtonPrefab = CreateButtonObject("RewardButtonPrefab", "卡牌", new Vector2(680f, 78f));
+        choiceButtonPrefab = CreateButtonObject("RewardButtonPrefab", "卡牌", new Vector2(680f, 64f));
         choiceButtonPrefab.SetActive(false);
         choiceButtonPrefab.transform.SetParent(transform, false);
 
@@ -240,6 +243,9 @@ public class RewardChoiceUI : NodeContentController
         GameObject buttonObject = new GameObject(name);
         RectTransform rect = buttonObject.AddComponent<RectTransform>();
         rect.sizeDelta = size;
+        LayoutElement layoutElement = buttonObject.AddComponent<LayoutElement>();
+        layoutElement.minHeight = size.y;
+        layoutElement.preferredHeight = size.y;
         Image image = buttonObject.AddComponent<Image>();
         image.color = new Color(0.2f, 0.22f, 0.32f, 1f);
         Button button = buttonObject.AddComponent<Button>();

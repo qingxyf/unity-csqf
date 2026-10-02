@@ -119,6 +119,14 @@ public class ContentPoolTests
             Assert.That(evt, Is.Not.Null, path);
             Assert.That(evt.choices, Has.Count.EqualTo(3), path);
         }
+
+        EventData[] allEvents = Resources.LoadAll<EventData>("Events");
+        Assert.That(allEvents.Length, Is.EqualTo(18));
+        foreach (EventData evt in allEvents)
+        {
+            Assert.That(evt.choices, Has.Count.EqualTo(3), evt.eventName);
+            Assert.That(evt.choices.TrueForAll(choice => choice != null && !string.IsNullOrEmpty(choice.buttonText)), Is.True, evt.eventName);
+        }
     }
 
     [Test]
@@ -152,4 +160,5 @@ public class ContentPoolTests
 
         Object.DestroyImmediate(collectible);
     }
+
 }

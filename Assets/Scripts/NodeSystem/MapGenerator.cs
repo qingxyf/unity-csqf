@@ -43,6 +43,9 @@ public class MapGenerator : MonoBehaviour
     {
         EnsureMapContainer();
         ClearExistingMap();
+        // A terminal result hides the map. Activate it before instantiating
+        // nodes so Awake can bind their renderer before Initialize/SetIcon.
+        mapContainer.gameObject.SetActive(true);
 
         for (int i = 0; i <= totalDepth + 1; i++)
             nodesByDepth.Add(new List<Node>());
@@ -327,29 +330,20 @@ public class MapGenerator : MonoBehaviour
         if (mapContainer == null)
             return;
 
-        Transform background = null;
-        for (int i = 0; i < mapContainer.childCount; i++)
-        {
-            Transform child = mapContainer.GetChild(i);
-            if (child.name.Contains("map") || child.GetComponent<SpriteRenderer>()?.sprite != null)
-            {
-                background = child;
-                background.SetParent(null);
-                break;
-            }
-        }
-
         for (int i = mapContainer.childCount - 1; i >= 0; i--)
         {
             GameObject child = mapContainer.GetChild(i).gameObject;
+            // Keep authored backgrounds/decorations; a node with an icon is
+            // still a generated node and must not become the next background.
+            if (child.GetComponent<Node>() == null)
+                continue;
+
+            child.SetActive(false);
             if (Application.isPlaying)
                 Destroy(child);
             else
                 DestroyImmediate(child);
         }
-
-        if (background != null)
-            background.SetParent(mapContainer);
     }
 
     private void EnsureMapContainer()

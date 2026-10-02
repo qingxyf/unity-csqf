@@ -26,6 +26,7 @@ public class EventManager : NodeContentController
     private EventData currentEvent;
     private string lastGrantedCollectibleName;
     private string lastUpgradedCardName;
+    private Button boundContinueButton;
 
     public string LastGrantedCollectibleName => lastGrantedCollectibleName;
     public string LastUpgradedCardName => lastUpgradedCardName;
@@ -43,8 +44,7 @@ public class EventManager : NodeContentController
         if (resultPanel != null)
             resultPanel.SetActive(false);
 
-        if (continueButton != null)
-            continueButton.onClick.AddListener(OnContinue);
+        BindContinueButton();
 
         ShowRandomEvent();
     }
@@ -76,6 +76,9 @@ public class EventManager : NodeContentController
             OnContinue();
             return;
         }
+
+        EnsureChoiceUI();
+        BindContinueButton();
 
         if (titleText != null)
             titleText.text = evt.eventName;
@@ -322,7 +325,10 @@ public class EventManager : NodeContentController
             canvasObject.transform.SetParent(transform, false);
             canvas = canvasObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasObject.AddComponent<CanvasScaler>().uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
@@ -335,10 +341,9 @@ public class EventManager : NodeContentController
         titleText = CreateText("Title", panel.transform, "事件", 34, TextAlignmentOptions.Center, new Vector2(680f, 60f), new Vector2(0f, 205f));
         descriptionText = CreateText("Description", panel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(660f, 160f), new Vector2(0f, 85f));
 
-        GameObject choiceRoot = new GameObject("Choices");
+        GameObject choiceRoot = new GameObject("Choices", typeof(RectTransform));
         choiceRoot.transform.SetParent(panel.transform, false);
-        choiceButtonContainer = choiceRoot.transform;
-        RectTransform choiceRect = choiceRoot.AddComponent<RectTransform>();
+        RectTransform choiceRect = choiceRoot.GetComponent<RectTransform>();
         choiceRect.sizeDelta = new Vector2(660f, 180f);
         choiceRect.anchoredPosition = new Vector2(0f, -115f);
         VerticalLayoutGroup layout = choiceRoot.AddComponent<VerticalLayoutGroup>();
@@ -346,6 +351,7 @@ public class EventManager : NodeContentController
         layout.childControlHeight = true;
         layout.childControlWidth = true;
         layout.childForceExpandHeight = false;
+        choiceButtonContainer = choiceRoot.transform;
 
         choiceButtonPrefab = CreateButtonObject("RuntimeChoiceButton", "选择", new Vector2(660f, 48f));
         choiceButtonPrefab.SetActive(false);
@@ -355,7 +361,31 @@ public class EventManager : NodeContentController
         resultPanel.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -65f);
         resultText = CreateText("ResultText", resultPanel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(620f, 140f), new Vector2(0f, 35f));
         continueButton = CreateButton("ContinueButton", resultPanel.transform, "继续", new Vector2(180f, 48f), new Vector2(0f, -75f));
+        BindContinueButton();
         resultPanel.SetActive(false);
+    }
+
+    // EventContent deliberately has no serialized UI references. DisplayEvent invokes this
+    // before assigning event text, so fallback construction cannot overwrite the event view.
+    private void EnsureChoiceUI()
+    {
+        if (choiceButtonContainer != null && choiceButtonPrefab != null)
+            return;
+
+        EnsureRuntimeUI();
+    }
+
+    private void BindContinueButton()
+    {
+        if (boundContinueButton == continueButton)
+            return;
+
+        if (boundContinueButton != null)
+            boundContinueButton.onClick.RemoveListener(OnContinue);
+
+        boundContinueButton = continueButton;
+        if (boundContinueButton != null)
+            boundContinueButton.onClick.AddListener(OnContinue);
     }
 
     private GameObject CreatePanel(string name, Transform parent, Vector2 size, Color color)
@@ -398,6 +428,9 @@ public class EventManager : NodeContentController
         GameObject buttonObject = new GameObject(name);
         RectTransform rect = buttonObject.AddComponent<RectTransform>();
         rect.sizeDelta = size;
+        LayoutElement layoutElement = buttonObject.AddComponent<LayoutElement>();
+        layoutElement.minHeight = size.y;
+        layoutElement.preferredHeight = size.y;
         Image image = buttonObject.AddComponent<Image>();
         image.color = new Color(0.2f, 0.22f, 0.32f, 1f);
         Button button = buttonObject.AddComponent<Button>();

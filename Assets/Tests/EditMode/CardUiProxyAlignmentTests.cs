@@ -109,6 +109,76 @@ public class CardUiProxyAlignmentTests
     }
 
     [Test]
+    public void HandBaselineKeepsTheOuterFanCardsAboveTheCanvasBottom()
+    {
+        GameObject canvasObject = new GameObject("Combat Canvas", typeof(RectTransform), typeof(Canvas));
+        GameObject handObject = new GameObject("Hand Area", typeof(RectTransform));
+        try
+        {
+            RectTransform canvas = canvasObject.GetComponent<RectTransform>();
+            canvas.sizeDelta = new Vector2(960f, 600f);
+
+            RectTransform hand = handObject.GetComponent<RectTransform>();
+            hand.SetParent(canvas, false);
+            hand.anchorMin = new Vector2(0.5f, 0f);
+            hand.anchorMax = new Vector2(0.5f, 0f);
+            hand.sizeDelta = new Vector2(1180f, 330f);
+            hand.anchoredPosition = new Vector2(0f, 92f);
+
+            HandView handView = handObject.AddComponent<HandView>();
+            handView.handContainer = hand;
+            handView.yOffset = -68f;
+            handView.arcDepth = 36f;
+
+            MethodInfo method = typeof(HandView).GetMethod(
+                "GetSafeHandBaseline",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(method, Is.Not.Null);
+            float baseline = (float)method.Invoke(handView, null);
+
+            MethodInfo fanWidthMethod = typeof(HandView).GetMethod(
+                "GetSafeFanWidth",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(fanWidthMethod, Is.Not.Null);
+            float fanWidth = (float)fanWidthMethod.Invoke(handView, null);
+            float spacing = fanWidth / 9f;
+            Assert.That(spacing, Is.GreaterThan(50f), "Ten cards must retain an exposed click region.");
+
+            // Validate every corner of a full ten-card hand.  The outer cards
+            // use 18-degree rotation and the inner cards use their real fan
+            // angles, so this catches both vertical and horizontal clipping.
+            for (int i = 0; i < 10; i++)
+            {
+                float normalized = Mathf.Lerp(-1f, 1f, i / 9f);
+                GameObject cardObject = new GameObject("Hand card " + i, typeof(RectTransform));
+                RectTransform card = cardObject.GetComponent<RectTransform>();
+                card.SetParent(hand, false);
+                card.sizeDelta = new Vector2(196f, 292f);
+                card.anchoredPosition = new Vector2(
+                    -fanWidth * 0.5f + i * spacing,
+                    baseline - Mathf.Abs(normalized) * handView.arcDepth);
+                card.localRotation = Quaternion.Euler(0f, 0f, -normalized * handView.fanAngle);
+
+                Vector3[] corners = new Vector3[4];
+                card.GetWorldCorners(corners);
+                foreach (Vector3 corner in corners)
+                {
+                    Vector3 local = canvas.InverseTransformPoint(corner);
+                    Assert.That(local.x, Is.InRange(canvas.rect.xMin, canvas.rect.xMax));
+                    Assert.That(local.y, Is.InRange(canvas.rect.yMin, canvas.rect.yMax));
+                }
+                Object.DestroyImmediate(cardObject);
+            }
+
+        }
+        finally
+        {
+            Object.DestroyImmediate(handObject);
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
     public void RuntimeCombatUiUsesChineseLabels()
     {
         string source = File.ReadAllText("Assets/Scripts/CardSystem/CombatController.cs");
@@ -118,7 +188,7 @@ public class CardUiProxyAlignmentTests
         Assert.That(source, Does.Contain("生命"));
         Assert.That(source, Does.Contain("能量"));
         Assert.That(source, Does.Contain("handView.cardScale = 0.34f"));
-        Assert.That(source, Does.Contain("handView.hoverScale = 1.2f"));
+        Assert.That(source, Does.Contain("handView.hoverScale = 1.4f"));
         Assert.That(source, Does.Not.Contain("Attack 1"));
         Assert.That(source, Does.Not.Contain("End Turn"));
     }
