@@ -49,6 +49,9 @@ public static class CiBuild
             throw new BuildFailedException($"WebGL roguelike scene is missing: {WebGlRoguelikeScene}");
 
         Directory.CreateDirectory(outputPath);
+        PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+        PlayerSettings.WebGL.decompressionFallback = false;
+
         BuildReport report = BuildPipeline.BuildPlayer(
             new[] { WebGlRoguelikeScene },
             outputPath,
@@ -58,6 +61,30 @@ public static class CiBuild
         if (report.summary.result != BuildResult.Succeeded)
             throw new BuildFailedException($"WebGL build failed: {report.summary.result}");
 
+        ValidateUncompressedWebGlResources(Path.Combine(outputPath, "Build"));
+
         Debug.Log($"CI WebGL build succeeded: {outputPath} ({report.summary.totalSize} bytes)");
+    }
+
+    private static void ValidateUncompressedWebGlResources(string resourceDirectory)
+    {
+        if (!Directory.Exists(resourceDirectory))
+            throw new BuildFailedException($"WebGL build did not produce a Build resource directory: {resourceDirectory}");
+
+        string[] resourceFiles = Directory.GetFiles(resourceDirectory, "*", SearchOption.AllDirectories);
+        string[] expectedExtensions = { ".data", ".framework.js", ".wasm" };
+        string[] compressedExtensions = { ".br", ".gz", ".unityweb" };
+
+        foreach (string extension in expectedExtensions)
+        {
+            if (!resourceFiles.Any(path => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
+                throw new BuildFailedException($"WebGL build is missing an uncompressed {extension} resource in {resourceDirectory}.");
+        }
+
+        string[] compressedResources = resourceFiles
+            .Where(path => compressedExtensions.Any(extension => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        if (compressedResources.Length > 0)
+            throw new BuildFailedException($"WebGL build contains compressed resources: {string.Join(", ", compressedResources)}");
     }
 }
