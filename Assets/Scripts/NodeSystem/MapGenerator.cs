@@ -246,10 +246,17 @@ public class MapGenerator : MonoBehaviour
 
     public void UpdateNodeVisibility()
     {
+        // Keep the current route layer at the map centre. Logical positions
+        // remain unchanged for route generation; moving only map nodes avoids
+        // moving the fixed camera used by the player and combat encounters.
+        float depthOffset = currentDepth * verticalSpacing;
         for (int depth = 0; depth <= totalDepth + 1; depth++)
         {
             foreach (Node node in nodesByDepth[depth])
+            {
+                node.transform.position = new Vector3(node.position.x, node.position.y - depthOffset, 0f);
                 node.gameObject.SetActive(false);
+            }
         }
 
         int maxVisible = Mathf.Min(currentDepth + visibleDepthAhead, totalDepth + 1);

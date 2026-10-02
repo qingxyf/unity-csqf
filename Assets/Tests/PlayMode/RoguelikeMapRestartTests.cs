@@ -12,6 +12,50 @@ public class RoguelikeMapRestartTests
     private Texture2D texture;
 
     [UnityTest]
+    public IEnumerator EveryRouteLayerThroughTheBossStaysVisibleAndClickable()
+    {
+        arena = new GameObject("Full Route Arena");
+        MapGenerator map = arena.AddComponent<MapGenerator>();
+        map.totalDepth = 10;
+        map.nodesPerLayer = 3;
+        map.verticalSpacing = 1.5f;
+        map.GenerateMap();
+        yield return null;
+
+        GameObject cameraObject = new GameObject("Fixed Route Camera", typeof(Camera));
+        cameraObject.transform.SetParent(arena.transform, false);
+        cameraObject.transform.position = new Vector3(0f, 0f, -10f);
+        Camera camera = cameraObject.GetComponent<Camera>();
+        camera.orthographic = true;
+        camera.orthographicSize = 5f;
+        camera.aspect = 16f / 10f;
+
+        Node current = map.GetNodesByDepth()[0][0];
+        map.MoveToNode(current);
+        while (current.nextNodes.Count > 0)
+        {
+            Node next = current.nextNodes[0];
+            Assert.That(next.depth, Is.EqualTo(current.depth + 1));
+            Assert.That(next.isActive, Is.True);
+            Assert.That(next.position.y, Is.EqualTo(next.depth * map.verticalSpacing));
+            Vector3 viewport = camera.WorldToViewportPoint(next.transform.position);
+            Assert.That(viewport.x, Is.InRange(0.1f, 0.9f));
+            Assert.That(viewport.y, Is.InRange(0.1f, 0.9f), next.name);
+            Assert.That(next.GetComponent<Collider2D>().enabled, Is.True);
+            Physics2D.SyncTransforms();
+            Assert.That(Physics2D.OverlapPoint(next.transform.position).gameObject, Is.SameAs(next.gameObject));
+
+            map.MoveToNode(next);
+            Assert.That(next.transform.position.y, Is.EqualTo(0f).Within(0.01f));
+            current = next;
+        }
+
+        Assert.That(current.type, Is.EqualTo(NodeType.Boss));
+        Assert.That(current.depth, Is.EqualTo(11));
+        Assert.That(camera.transform.position, Is.EqualTo(new Vector3(0f, 0f, -10f)));
+    }
+
+    [UnityTest]
     public IEnumerator RegeneratingHiddenMapInitializesFreshClickableNodesAndKeepsDecorations()
     {
         arena = new GameObject("Restart Map Arena");
