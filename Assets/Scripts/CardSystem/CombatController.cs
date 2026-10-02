@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -224,7 +225,14 @@ public class CombatController : NodeContentController
 
         if (isBossBattle)
         {
-            CompleteCombat();
+            rewardShown = true;
+            float exitDelay = 0f;
+            foreach (RoguelikeEnemyPresentation visual in GetComponentsInChildren<RoguelikeEnemyPresentation>())
+                exitDelay = Mathf.Max(exitDelay, visual.RemainingDeathDuration);
+            if (Application.isPlaying && exitDelay > 0f)
+                StartCoroutine(CompleteBossAfterExit(exitDelay));
+            else
+                CompleteCombat();
             return;
         }
 
@@ -235,6 +243,12 @@ public class CombatController : NodeContentController
             victoryButton.gameObject.SetActive(true);
         else
             CompleteCombat();
+    }
+
+    private IEnumerator CompleteBossAfterExit(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (combatActive) CompleteCombat();
     }
 
     private bool TryShowVictoryReward()

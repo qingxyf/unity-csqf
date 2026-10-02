@@ -1,7 +1,10 @@
+using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 
 public class RoguelikeEnemyContentTests
 {
@@ -61,5 +64,39 @@ public class RoguelikeEnemyContentTests
         Assert.That(enemy.CanAct(), Is.False);
         enemy.AttackPlayer();
         Assert.That(enemy.hasDealtDamage, Is.False);
+    }
+
+    [UnityTest]
+    public IEnumerator BossExitFinishesBeforeCombatCompletes()
+    {
+        yield return new EnterPlayMode();
+        GameObject arena = new GameObject("Boss exit lifecycle");
+        CombatController combat = arena.AddComponent<CombatController>();
+        combat.startCombatOnStart = false;
+        combat.autoBuildUI = false;
+        combat.completeNodeOnVictory = false;
+        combat.isBossBattle = true;
+        combat.StartCombat();
+        yield return null;
+
+        Enemy boss = arena.GetComponentInChildren<Enemy>();
+        RoguelikeEnemyPresentation visual = boss.GetComponent<RoguelikeEnemyPresentation>();
+        Assert.That(visual.body.GetComponent<Animation>().GetClip("Attack"), Is.Not.Null);
+        boss.AttackPlayer();
+        Assert.That(visual.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Attack));
+        boss.TakeDamage(10000);
+        EnemyManager.Instance.ClearNulls();
+        Assert.That(EnemyManager.Instance.ActiveEnemies, Does.Not.Contain(boss));
+        Assert.That(visual.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Death));
+
+        FieldInfo active = typeof(CombatController).GetField("combatActive", BindingFlags.Instance | BindingFlags.NonPublic);
+        yield return new WaitForSeconds(0.06f);
+        Assert.That(boss != null, Is.True, "The final boss must remain visible during its exit.");
+        Assert.That((bool)active.GetValue(combat), Is.True);
+        yield return new WaitForSeconds(0.5f);
+        Assert.That(boss == null, Is.True);
+        Assert.That((bool)active.GetValue(combat), Is.False);
+        Object.Destroy(arena);
+        yield return new ExitPlayMode();
     }
 }

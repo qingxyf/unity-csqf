@@ -17,6 +17,8 @@ public class RoguelikeEnemyPresentation : MonoBehaviour
 
     public MotionState CurrentState { get; private set; }
     public float DeathDuration => 0.45f;
+    public float RemainingDeathDuration => CurrentState == MotionState.Death
+        ? Mathf.Max(0f, DeathDuration - (Time.time - stateStartedAt)) : 0f;
     public float AttackDuration => profile == MotionProfile.Duelist ? 0.9f :
         (profile == MotionProfile.Caster ? 0.8f : 0.6f);
 
