@@ -93,15 +93,6 @@ public class MapInputAlignmentTests
         Assert.That(run.resultPanel, Is.Not.Null);
     }
 
-    [Test]
-    public void BackpackCardsUseDedicatedRaycastSlots()
-    {
-        string source = File.ReadAllText("Assets/Scripts/UI/BackpackDisplay.cs");
-
-        Assert.That(source, Does.Contain("CreateCardSlot"));
-        Assert.That(source, Does.Contain("DisableRaycastTargets"));
-    }
-
     private static MonoBehaviour FindMapGeneratorInOpenScene()
     {
         return UnityEngine.Object.FindObjectsOfType<MonoBehaviour>()

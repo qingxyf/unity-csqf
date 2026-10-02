@@ -35,23 +35,54 @@ public class RulesDisplay : MonoBehaviour
    造成光/暗伤害 + (目标上次受过暗/光伤害) -> 主角下一次受到的伤害减少10点。
 ";
 
-    private void Start()
+    private GameObject overlay;
+
+    // The serialized panel is already inactive in the map scene.  Closing it
+    // again from Start immediately after its first activation swallowed the
+    // first rules-button click.
+    public bool IsOpen => overlay != null && overlay.activeSelf;
+
+    public void CloseRules()
     {
+        if (overlay != null) overlay.SetActive(false);
         if (rulesPanel != null) rulesPanel.SetActive(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (overlay != null) Destroy(overlay);
     }
 
     public void ToggleRules()
     {
-        if (rulesPanel != null)
+        if (IsOpen) { CloseRules(); return; }
+        if (rulesPanel != null) rulesPanel.SetActive(false);
+        if (overlay == null)
         {
-            bool isActive = !rulesPanel.activeSelf;
-            rulesPanel.SetActive(isActive);
-            
-            if (isActive)
-            {
-                UpdateText();
-            }
+            overlay = BackpackDisplay.CreateOverlay("规则", CloseRules, out RectTransform body);
+            Transform content = overlay.transform.Find("Body/Viewport/Content");
+            GameObject textObject = new GameObject("规则内容", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textObject.transform.SetParent(content, false);
+            TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+            if (TMP_Settings.defaultFontAsset != null) text.font = TMP_Settings.defaultFontAsset;
+            text.text = rulesContent;
+            text.fontSize = 20f;
+            text.enableWordWrapping = true;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            RectTransform rect = text.rectTransform;
+            rect.anchorMin = new Vector2(0f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.sizeDelta = new Vector2(-28f, 0f);
+            rect.anchoredPosition = new Vector2(0f, -10f);
+            Canvas.ForceUpdateCanvases();
+            float contentHeight = Mathf.Max(450f, text.preferredHeight + 20f);
+            rect.sizeDelta = new Vector2(-28f, contentHeight - 20f);
+            ((RectTransform)content).sizeDelta = new Vector2(0f, contentHeight);
         }
+        overlay.SetActive(true);
+        UpdateText();
     }
 
     private void UpdateText()

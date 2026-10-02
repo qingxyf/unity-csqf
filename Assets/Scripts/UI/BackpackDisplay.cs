@@ -1,205 +1,178 @@
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
-using System.Linq;
-using TMPro; // Assuming TextMeshPro is used, if not, use UnityEngine.UI
 
-    public class BackpackDisplay : MonoBehaviour
-    {
-        [Header("UI References")]
-        public Transform contentContainer;
-        public GameObject itemPrefab; // 默认通用模板
-        public GameObject backpackPanel;
-        public Transform stagePreviewParent;
+public class BackpackDisplay : MonoBehaviour
+{
+    public Transform contentContainer;
+    public GameObject itemPrefab;
+    public GameObject backpackPanel;
+    public Transform stagePreviewParent;
 
-    // 缓存从 Resources/CardPrefabs 加载过的预制体，避免重复加载
-    private Dictionary<string, GameObject> prefabCache = new Dictionary<string, GameObject>();
-    private static readonly Vector2 CardSlotHitboxSize = new Vector2(96f, 126f);
-
-    private void Start()
-    {
-        // Close by default
-        if (backpackPanel != null) backpackPanel.SetActive(false);
-    }
+    private GameObject overlay;
+    public bool IsOpen => overlay != null && overlay.activeSelf;
 
     public void ToggleBackpack()
     {
-        if (backpackPanel != null)
+        if (IsOpen)
         {
-            bool isActive = !backpackPanel.activeSelf;
-            backpackPanel.SetActive(isActive);
-            
-            if (isActive)
-            {
-                RefreshDisplay();
-            }
+            CloseBackpack();
+            return;
         }
+        ShowBackpack();
+    }
+
+    public void ShowBackpack()
+    {
+        if (backpackPanel != null) backpackPanel.SetActive(false);
+        if (overlay == null)
+            overlay = CreateOverlay("背包", CloseBackpack, out RectTransform body);
+        overlay.SetActive(true);
+        RefreshDisplay();
+    }
+
+    public void CloseBackpack()
+    {
+        if (overlay != null) overlay.SetActive(false);
+        if (backpackPanel != null) backpackPanel.SetActive(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (overlay != null) Destroy(overlay);
     }
 
     public void RefreshDisplay()
     {
-        if (contentContainer == null || itemPrefab == null)
+        if (overlay == null) return;
+        Transform content = overlay.transform.Find("Body/Viewport/Content");
+        if (content == null) return;
+        foreach (Transform child in content)
         {
-            Debug.LogError("BackpackDisplay: Content Container or Item Prefab not assigned!");
-            return;
-        }
-
-        // 移除可能存在的布局组件，避免它们覆盖我们手动设置的位置
-        LayoutGroup[] layoutGroups = contentContainer.GetComponents<LayoutGroup>();
-        foreach (var group in layoutGroups)
-        {
-            DestroyImmediate(group);
-        }
-
-        ContentSizeFitter fitter = contentContainer.GetComponent<ContentSizeFitter>();
-        if (fitter != null)
-        {
-            DestroyImmediate(fitter);
-        }
-
-        if (DeckManager.Instance == null)
-        {
-            Debug.LogError("BackpackDisplay: DeckManager not found!");
-            return;
-        }
-
-        foreach (Transform child in contentContainer)
-        {
+            child.gameObject.SetActive(false);
             Destroy(child.gameObject);
         }
 
-        var cards = DeckManager.Instance.backpack;
-
-        // 手动坐标规则：
-        // 第一张卡片在 x=-211, y=150
-        // 第二张 x=-96, y 不变
-        // 第三张 x=12, 依次类推，每行 5 张
-        // 第二行 y=12，第三行 y=-118
-
-        float[] columnXs = new float[] { -211f, -96f, 12f, 120f, 228f };
-        float[] rowYs = new float[] { 150f, 12f, -118f };
-        int columns = 5;
-
-        for (int i = 0; i < cards.Count; i++)
-        {
-            var card = cards[i];
-            GameObject prefabToUse = itemPrefab;
-
-            // 1. 尝试从 Resources/CardPrefabs 加载同名预制体
-            if (card != null && !string.IsNullOrEmpty(card.cardName))
-            {
-                if (prefabCache.ContainsKey(card.cardName))
-                {
-                    prefabToUse = prefabCache[card.cardName];
-                }
-                else
-                {
-                    GameObject loadedPrefab = CardResourceUtility.LoadCardPrefab(card);
-                    if (loadedPrefab != null)
-                    {
-                        prefabCache[card.cardName] = loadedPrefab;
-                        prefabToUse = loadedPrefab;
-                    }
-                }
-            }
-
-            if (prefabToUse == null) continue;
-
-            GameObject go = Instantiate(prefabToUse, contentContainer);
-            // 修正：不再强制放大10倍，因为 UI Image 使用 SetNativeSize 后已经是像素单位
-            // 建议使用 0.3f - 0.5f 之间的值，根据您的图片分辨率调整
-            go.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f); 
-            go.transform.localRotation = Quaternion.identity; // 重置旋转
-
-            // 计算行列
-            int row = i / columns;
-            int col = i % columns;
-
-            float posX;
-            if (col < columnXs.Length)
-            {
-                posX = columnXs[col];
-            }
-            else
-            {
-                // 超过 5 列时，继续用最后一个间距向右推
-                float lastSpacing = columnXs[columnXs.Length - 1] - columnXs[columnXs.Length - 2];
-                posX = columnXs[columnXs.Length - 1] + lastSpacing * (col - columnXs.Length + 1);
-            }
-
-            float posY;
-            if (row < rowYs.Length)
-            {
-                posY = rowYs[row];
-            }
-            else
-            {
-                float lastSpacingY = rowYs[rowYs.Length - 1] - rowYs[rowYs.Length - 2];
-                posY = rowYs[rowYs.Length - 1] + lastSpacingY * (row - rowYs.Length + 1);
-            }
-
-            // 使用 RectTransform 设置坐标，更稳健
-            GameObject slot = CreateCardSlot(card, new Vector2(posX, posY));
-            go.transform.SetParent(slot.transform, false);
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localScale = new Vector3(0.3f, 0.3f, 0.3f);
-            go.transform.localRotation = Quaternion.identity;
-
-            CardDisplay display = go.GetComponent<CardDisplay>();
-            if (display != null)
-            {
-                BackpackCardDisplay newDisplay = go.AddComponent<BackpackCardDisplay>();
-                newDisplay.nameText = display.nameText;
-                newDisplay.descriptionText = display.descriptionText;
-                newDisplay.costText = display.costText;
-                Destroy(display);
-                newDisplay.Setup(card);
-            }
-
-            DisableRaycastTargets(go);
-
-            BackpackCardHoverPreview hover = slot.AddComponent<BackpackCardHoverPreview>();
-            hover.cardData = card;
-            hover.stagePreviewParent = stagePreviewParent;
-        }
-
+        List<CardData> cards = DeckManager.Instance != null ? DeckManager.Instance.backpack : new List<CardData>();
+        TextMeshProUGUI title = overlay.transform.Find("Body/标题")?.GetComponent<TextMeshProUGUI>();
+        if (title != null) title.text = $"背包（{cards.Count} 张）";
+        RectTransform contentRect = content as RectTransform;
+        const float rowHeight = 104f;
+        for (int i = 0; i < cards.Count; i++) CreateCardRow(content, cards[i], i, rowHeight);
+        contentRect.sizeDelta = new Vector2(0f, Mathf.Max(450f, cards.Count * rowHeight + 16f));
         if (cards.Count == 0)
+            Text("空背包提示", content, "背包为空，继续探索以获得卡牌。", 22f, new Vector2(760f, 60f), new Vector2(0f, -42f), TextAlignmentOptions.Center);
+    }
+
+    public static GameObject CreateOverlay(string title, UnityEngine.Events.UnityAction close, out RectTransform body)
+    {
+        GameObject root = new GameObject(title + "覆盖层", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        Canvas canvas = root.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 500;
+        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1280f, 720f);
+        scaler.matchWidthOrHeight = 0.5f;
+        Stretch(root.GetComponent<RectTransform>());
+        Image blocker = root.AddComponent<Image>();
+        blocker.color = new Color(0f, 0f, 0f, 0.72f);
+        blocker.raycastTarget = true;
+        GameObject panel = UiObject("Body", root.transform, new Vector2(900f, 590f), Vector2.zero, new Color(0.06f, 0.08f, 0.12f, 0.98f));
+        body = panel.GetComponent<RectTransform>();
+        Text("标题", panel.transform, title, 30f, new Vector2(660f, 48f), new Vector2(-80f, 250f), TextAlignmentOptions.Left);
+        Button button = UiObject("关闭", panel.transform, new Vector2(110f, 44f), new Vector2(360f, 250f), new Color(0.3f, 0.12f, 0.14f, 1f)).AddComponent<Button>();
+        Text("文字", button.transform, "关闭", 20f, new Vector2(100f, 38f), Vector2.zero, TextAlignmentOptions.Center);
+        button.onClick.AddListener(close);
+        GameObject viewport = UiObject("Viewport", panel.transform, new Vector2(820f, 450f), new Vector2(0f, -28f), new Color(0f, 0f, 0f, 0.25f));
+        viewport.AddComponent<Mask>().showMaskGraphic = false;
+        GameObject content = new GameObject("Content", typeof(RectTransform));
+        content.transform.SetParent(viewport.transform, false);
+        RectTransform contentRect = content.GetComponent<RectTransform>();
+        contentRect.anchorMin = new Vector2(0f, 1f);
+        contentRect.anchorMax = new Vector2(1f, 1f);
+        contentRect.pivot = new Vector2(0.5f, 1f);
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = new Vector2(0f, 450f);
+        ScrollRect scroll = panel.AddComponent<ScrollRect>();
+        scroll.viewport = viewport.GetComponent<RectTransform>();
+        scroll.content = contentRect;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 35f;
+        return root;
+    }
+
+    private static void CreateCardRow(Transform parent, CardData card, int index, float rowHeight)
+    {
+        GameObject row = UiObject("Card_" + index, parent, new Vector2(0f, rowHeight - 8f),
+            new Vector2(0f, -index * rowHeight - rowHeight * 0.5f - 8f),
+            new Color(0.12f, 0.15f, 0.22f, 0.98f));
+        RectTransform rect = row.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.sizeDelta = new Vector2(0f, rowHeight - 8f);
+        string element = card != null ? GetElementLabel(card.element) : "未知";
+        string name = card != null ? card.cardName : "空卡";
+        string cost = card != null ? card.cost.ToString() : "-";
+        string effect = card != null ? CardDescriptionFormatter.GetDescription(card) : "";
+        Text("信息", row.transform, $"{name}   [{element}]   费用 {cost}\n{effect}",
+            20f, new Vector2(760f, 82f), Vector2.zero, TextAlignmentOptions.TopLeft);
+    }
+
+    private static string GetElementLabel(CardElement element)
+    {
+        switch (element)
         {
-            Debug.Log("Backpack is empty.");
+            case CardElement.Light: return "光";
+            case CardElement.Fire: return "火";
+            case CardElement.Nature: return "草";
+            case CardElement.Water: return "水";
+            case CardElement.Shadow: return "暗影";
+            default: return "无属性";
         }
     }
 
-    private GameObject CreateCardSlot(CardData card, Vector2 anchoredPosition)
+    private static GameObject UiObject(string name, Transform parent, Vector2 size, Vector2 position, Color color)
     {
-        string slotName = card != null && !string.IsNullOrEmpty(card.cardName)
-            ? card.cardName + "_Slot"
-            : "CardSlot";
-
-        GameObject slot = new GameObject(slotName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-        slot.transform.SetParent(contentContainer, false);
-
-        RectTransform rt = slot.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = anchoredPosition;
-        rt.sizeDelta = CardSlotHitboxSize;
-        rt.localScale = Vector3.one;
-        rt.localRotation = Quaternion.identity;
-
-        Image image = slot.GetComponent<Image>();
-        image.color = new Color(1f, 1f, 1f, 0.001f);
-        image.raycastTarget = true;
-
-        return slot;
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        go.transform.SetParent(parent, false);
+        RectTransform rect = go.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = position;
+        go.GetComponent<Image>().color = color;
+        return go;
+    }
+    private static TextMeshProUGUI Text(string name,Transform parent,string value,float size,Vector2 dimensions,Vector2 position,TextAlignmentOptions alignment)
+    {
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        TextMeshProUGUI text = go.GetComponent<TextMeshProUGUI>();
+        if (TMP_Settings.defaultFontAsset != null) text.font = TMP_Settings.defaultFontAsset;
+        text.text = value;
+        text.fontSize = size;
+        text.enableAutoSizing = true;
+        text.fontSizeMin = 14f;
+        text.fontSizeMax = size;
+        text.enableWordWrapping = true;
+        text.alignment = alignment;
+        text.color = new Color(0.94f, 0.95f, 0.98f, 1f);
+        text.raycastTarget = false;
+        RectTransform rect = text.rectTransform;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = dimensions;
+        rect.anchoredPosition = position;
+        return text;
     }
 
-    private static void DisableRaycastTargets(GameObject root)
+    private static void Stretch(RectTransform rect)
     {
-        foreach (Graphic graphic in root.GetComponentsInChildren<Graphic>(true))
-            graphic.raycastTarget = false;
-
-        foreach (GraphicRaycaster raycaster in root.GetComponentsInChildren<GraphicRaycaster>(true))
-            raycaster.enabled = false;
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
     }
 }

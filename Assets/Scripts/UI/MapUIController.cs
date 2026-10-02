@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class MapUIController : MonoBehaviour
 {
@@ -25,24 +26,55 @@ public class MapUIController : MonoBehaviour
         if (backpackDisplay == null) backpackDisplay = FindObjectOfType<BackpackDisplay>(true);
         if (rulesDisplay == null) rulesDisplay = FindObjectOfType<RulesDisplay>(true);
 
-        SetupButton(backpackButton, OnBackpackButtonClicked);
-
-        SetupButton(rulesButton, OnRulesButtonClicked);
+        if (backpackButton != null) backpackButton.SetActive(false);
+        if (rulesButton != null) rulesButton.SetActive(false);
+        CreateUtilityButtons();
 
         SetButtonsActive(false);
     }
 
-    private void SetupButton(GameObject obj, UnityEngine.Events.UnityAction action)
+    private void CreateUtilityButtons()
     {
-        if (obj != null)
-        {
-            Button btn = obj.GetComponent<Button>();
-            if (btn == null)
-            {
-                btn = obj.AddComponent<Button>();
-            }
-            btn.onClick.AddListener(action);
-        }
+        GameObject canvasObject = new GameObject("MapUtilityCanvas", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+        canvasObject.transform.SetParent(transform, false);
+        Canvas canvas = canvasObject.GetComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 100;
+        CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1280f, 720f);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        backpackButton = CreateTextButton("背包", canvasObject.transform, new Vector2(94f, -32f), new Vector2(160f, 44f), OnBackpackButtonClicked);
+        rulesButton = CreateTextButton("规则", canvasObject.transform, new Vector2(230f, -32f), new Vector2(100f, 44f), OnRulesButtonClicked);
+    }
+
+    private static GameObject CreateTextButton(string label, Transform parent, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
+    {
+        GameObject buttonObject = new GameObject(label + "按钮", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(parent, false);
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+        buttonObject.GetComponent<Image>().color = new Color(0.08f, 0.11f, 0.18f, 0.94f);
+        buttonObject.GetComponent<Button>().onClick.AddListener(action);
+
+        GameObject textObject = new GameObject("文字", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        textObject.transform.SetParent(buttonObject.transform, false);
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        if (TMP_Settings.defaultFontAsset != null) text.font = TMP_Settings.defaultFontAsset;
+        text.text = label;
+        text.fontSize = 21f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
+        text.raycastTarget = false;
+        text.rectTransform.anchorMin = Vector2.zero;
+        text.rectTransform.anchorMax = Vector2.one;
+        text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
+        return buttonObject;
     }
 
     private void OnBackpackButtonClicked()
@@ -91,7 +123,9 @@ public class MapUIController : MonoBehaviour
         }
 
         // Final Visibility
-        bool shouldShow = timeCondition && mapCondition;
+        bool utilityOpen = (backpackDisplay != null && backpackDisplay.IsOpen)
+            || (rulesDisplay != null && rulesDisplay.IsOpen);
+        bool shouldShow = timeCondition && mapCondition && !utilityOpen;
         
         SetButtonsActive(shouldShow);
     }
