@@ -60,7 +60,7 @@ public class RoguelikeEnemyContentTests
         EnemyManager.Instance.ClearNulls();
         EnemyManager.Instance.Register(enemy);
 
-        Assert.That(EnemyManager.Instance.ActiveEnemies, Does.Not.Contain(enemy));
+        Assert.That(EnemyManager.Instance.ActiveEnemies, Has.No.Member(enemy));
         Assert.That(enemy.CanAct(), Is.False);
         enemy.AttackPlayer();
         Assert.That(enemy.hasDealtDamage, Is.False);
@@ -94,7 +94,7 @@ public class RoguelikeEnemyContentTests
         Assert.That(combat.AcceptsPlayerActions, Is.False,
             "Victory must lock input before the next frame.");
         EnemyManager.Instance.ClearNulls();
-        Assert.That(EnemyManager.Instance.ActiveEnemies, Does.Not.Contain(boss));
+        Assert.That(EnemyManager.Instance.ActiveEnemies, Has.No.Member(boss));
         Assert.That(visual.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Death));
 
         FieldInfo active = typeof(CombatController).GetField("combatActive", BindingFlags.Instance | BindingFlags.NonPublic);
