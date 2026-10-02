@@ -520,6 +520,8 @@ public static class CollectibleManager
 
     public static bool AddCollectible(CollectibleData collectible)
     {
+        // Authored collectibles use collectibleId as their run-unique ownership key.
+        // Empty IDs are invalid instead of silently allowing unbounded duplicates.
         if (collectible == null || string.IsNullOrEmpty(collectible.collectibleId)) return false;
         if (ownedCollectibles.Exists(existing => existing != null && existing.collectibleId == collectible.collectibleId)) return false;
         ownedCollectibles.Add(collectible);

@@ -28,8 +28,11 @@ jobs:
         run: ./scripts/harness/precompletion.ps1 -SkipUnity -ProjectRoot "$PWD"
 
   editmode:
-    name: Unity EditMode tests
+    name: Unity EditMode and PlayMode tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     needs: static
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
@@ -58,7 +61,7 @@ jobs:
             echo "Configure UNITY_EMAIL and UNITY_PASSWORD plus either UNITY_LICENSE (Personal) or UNITY_SERIAL (Professional) before running Unity CI." >&2
             exit 1
           fi
-      - name: Run EditMode tests
+      - name: Run EditMode and PlayMode tests
         id: editmode-tests
         uses: game-ci/unity-test-runner@v4
         env:
@@ -69,14 +72,14 @@ jobs:
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
-          testMode: editmode
-          artifactsPath: artifacts/editmode
+          testMode: all
+          artifactsPath: artifacts/unity-tests
           customParameters: -nographics
       - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: unity-editmode-results
+          name: unity-test-results
           path: ${{ steps.editmode-tests.outputs.artifactsPath }}
           if-no-files-found: warn
 

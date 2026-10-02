@@ -266,6 +266,7 @@ public class RoguelikeV02RulesTests
     {
         PlayerStats stats = CreatePlayerStats();
         CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "test_max_health";
         collectible.collectibleName = "生命标本";
         collectible.effectType = CollectibleEffectType.MaxHealth;
         collectible.amount = 15;
@@ -288,6 +289,7 @@ public class RoguelikeV02RulesTests
     {
         PlayerStats stats = CreatePlayerStats();
         CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "test_max_energy";
         collectible.collectibleName = "Energy Core";
         collectible.effectType = CollectibleEffectType.MaxMana;
         collectible.amount = 1;
@@ -310,6 +312,7 @@ public class RoguelikeV02RulesTests
     {
         PlayerStats stats = CreatePlayerStats();
         CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "test_start_shield";
         collectible.collectibleName = "Aegis Shard";
         collectible.effectType = CollectibleEffectType.StartShield;
         collectible.amount = 8;
@@ -359,8 +362,10 @@ public class RoguelikeV02RulesTests
     public void CollectibleSummaryListsOwnedCollectibleNames()
     {
         CollectibleData first = ScriptableObject.CreateInstance<CollectibleData>();
+        first.collectibleId = "test_summary_life";
         first.collectibleName = "Life Specimen";
         CollectibleData second = ScriptableObject.CreateInstance<CollectibleData>();
+        second.collectibleId = "test_summary_aegis";
         second.collectibleName = "Aegis Shard";
 
         try
@@ -385,6 +390,7 @@ public class RoguelikeV02RulesTests
     public void ElementCostCollectibleDiscountsOnlyFirstMatchingCardEachTurn()
     {
         CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "test_water_discount";
         collectible.collectibleName = "寒潮坠饰";
         collectible.effectType = CollectibleEffectType.FirstElementCardCostReduction;
         collectible.element = CardElement.Water;
@@ -416,6 +422,7 @@ public class RoguelikeV02RulesTests
         CreateEnemyManager();
         Enemy enemy = CreateEnemy(100, 0);
         CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleId = "test_fire_damage";
         collectible.collectibleName = "火焰徽章";
         collectible.effectType = CollectibleEffectType.ElementDamageBonus;
         collectible.damageType = DamageType.Fire;

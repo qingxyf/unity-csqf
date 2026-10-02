@@ -18,6 +18,6 @@
 
 修改两张姿态后，可以运行 `python tools/generate-enemy-prefabs.py` 重新计算像素密度并生成预制体绑定。生成器不编辑图像，保持资源 GUID 稳定。新增骨骼动画可在未来替换表现组件，继续复用 `Enemy` 的战斗逻辑。
 
-云端 Unity EditMode 测试检查遭遇类型、每回合摸牌数、敌人预制体、双姿态绑定及死亡对象不被重新注册。最终运行时观感还需要通过 Unity 构建和浏览器试玩确认。
+云端 Unity EditMode 测试检查遭遇类型、每回合摸牌数、敌人预制体、双姿态绑定及死亡对象不被重新注册；PlayMode 测试检查实际攻击动作、最后一击锁定回合与首领退场时序。最终运行时观感还需要通过 Unity 构建和浏览器试玩确认。
 
 原生动画曲线的运行时创建遵循 [Unity 2022.3 AnimationClip.SetCurve](https://docs.unity3d.com/2022.3/Documentation/ScriptReference/AnimationClip.SetCurve.html) 的 legacy clip 接口。

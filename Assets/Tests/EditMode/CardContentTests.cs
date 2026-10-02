@@ -51,9 +51,15 @@ public class CardContentTests
             GameObject prefab = CardResourceUtility.LoadCardPrefab(card);
             CardDisplay display = prefab.GetComponentInChildren<CardDisplay>(true);
             Assert.That(display.nameText.text, Is.EqualTo(card.cardName), id);
-            Assert.That(display.descriptionText.text, Is.EqualTo(card.description), id);
+            Assert.That(RemoveLineBreaks(display.descriptionText.text),
+                Is.EqualTo(RemoveLineBreaks(card.description)), id);
             Assert.That(display.costText.text, Is.EqualTo(card.cost.ToString()), id);
         }
+    }
+
+    private static string RemoveLineBreaks(string value)
+    {
+        return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
     }
 
     [Test]

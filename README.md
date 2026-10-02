@@ -166,4 +166,4 @@ Assets/
 ./scripts/harness/precompletion.ps1 -SkipUnity
 ```
 
-GitHub Actions 位于 `.github/workflows/unity-ci.yml`，会执行架构/元数据检查、EditMode 测试和 Windows Standalone 构建。仓库需要配置 `UNITY_EMAIL`、`UNITY_PASSWORD`、`UNITY_SERIAL` secrets。事件插画、节点图标和其他可选图片缺失时，运行时会隐藏插画或生成基础节点/连线，不会阻止代码验证。
+GitHub Actions 位于 `.github/workflows/unity-ci.yml`，会执行架构/元数据检查、EditMode 与 PlayMode 测试、完整 Windows 构建及仅包含 forth 的 WebGL 构建。仓库需要配置 `UNITY_EMAIL`、`UNITY_PASSWORD`，并提供 Personal 的 `UNITY_LICENSE` 或 Professional 的 `UNITY_SERIAL`。Pages 发布配置见 [CI/CD 指南](docs/guides/ci-cd.md)。事件插画、节点图标和其他可选图片缺失时，运行时会隐藏插画或生成基础节点/连线，不会阻止代码验证。

@@ -5,8 +5,8 @@ The `Unity CI` workflow separates checks that can safely run on every pull reque
 | Trigger | Jobs |
 | --- | --- |
 | Fork pull request to `main` | Static harness checks only. This job does not receive Unity credentials. |
-| Same-repository pull request to `main` | Static checks, EditMode tests, the full-scene Windows build, and the `forth`-only WebGL build. |
-| Push to `main` or manual dispatch from any repository branch | Static checks, EditMode tests, the full-scene Windows build, and the `forth`-only WebGL build. |
+| Same-repository pull request to `main` | Static checks, EditMode and PlayMode tests, the full-scene Windows build, and the `forth`-only WebGL build. |
+| Push to `main` or manual dispatch from any repository branch | Static checks, EditMode and PlayMode tests, the full-scene Windows build, and the `forth`-only WebGL build. |
 
 GameCI's [Personal license setup](https://game.ci/docs/github/builder/#personal-license) requires `UNITY_LICENSE`, `UNITY_EMAIL`, and `UNITY_PASSWORD`. Its [Professional license setup](https://game.ci/docs/github/builder/#professional-license) requires `UNITY_EMAIL`, `UNITY_PASSWORD`, and `UNITY_SERIAL`. The workflow enforces that shared shape:
 
@@ -14,6 +14,8 @@ GameCI's [Personal license setup](https://game.ci/docs/github/builder/#personal-
 - `UNITY_SERIAL` for a Professional license.
 
 The workflow validates that combination before it downloads a Unity editor image. Add the secrets in the repository's Actions secrets settings; do not place them in source control. Same-repository pull requests can receive those secrets, while fork pull requests deliberately do not run Unity jobs because GitHub does not expose repository secrets to them.
+
+The combined EditMode and PlayMode job uses GameCI's `testMode: all`, which runs both modes and combines their results. It passes its default `githubToken` to GameCI, which creates the `Test Results` GitHub check after a completed test run. The job therefore has `checks: write` in addition to read-only contents access; no other Unity job receives that permission.
 
 The static job runs `precompletion.ps1 -SkipUnity` with an explicit project root, covering architecture, lint, content validation, and whitespace checks without relying on PowerShell's script-root inference. Each Unity job removes unused hosted-runner toolchains and prunes Docker before GameCI pulls its editor image. This is required because the editor image can exceed the runner's free Docker space. The workflow prints `df -h` after cleanup to make capacity failures diagnosable.
 

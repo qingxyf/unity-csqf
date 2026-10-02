@@ -140,4 +140,16 @@ public class ContentPoolTests
         Object.DestroyImmediate(duplicate);
         Assert.That(CollectibleManager.CreateRandomCollectible(), Is.Null);
     }
+
+    [Test]
+    public void AddCollectibleRejectsMissingId()
+    {
+        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
+        collectible.collectibleName = "Missing ID fixture";
+
+        Assert.That(CollectibleManager.AddCollectible(collectible), Is.False);
+        Assert.That(CollectibleManager.OwnedCollectibles, Is.Empty);
+
+        Object.DestroyImmediate(collectible);
+    }
 }

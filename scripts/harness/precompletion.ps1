@@ -27,7 +27,7 @@ git -C $ProjectRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "Whitespace check failed." }
 
 if ($SkipUnity) {
-    Write-Warning "Unity verification was explicitly skipped. CI must run EditMode tests and the build."
+    Write-Warning "Unity verification was explicitly skipped. CI must run EditMode/PlayMode tests and the builds."
     Write-Host "[precompletion] static checks passed; Unity checks skipped" -ForegroundColor Yellow
     exit 0
 }
@@ -58,7 +58,7 @@ function Invoke-Unity([string[]]$Arguments) {
             $argument
         }
     }) -join ' '
-    $process = Start-Process -FilePath $UnityPath -ArgumentList $argumentString -Wait -PassThru
+    $process = Start-Process -FilePath $UnityPath -ArgumentList $argumentString -WindowStyle Hidden -Wait -PassThru
     if ($process.ExitCode -ne 0) {
         throw "Unity exited with code $($process.ExitCode)."
     }
@@ -75,7 +75,7 @@ function Invoke-UnityUntilResults([string[]]$Arguments, [string]$ResultsPath) {
         }
     }) -join ' '
 
-    $process = Start-Process -FilePath $UnityPath -ArgumentList $argumentString -PassThru
+    $process = Start-Process -FilePath $UnityPath -ArgumentList $argumentString -WindowStyle Hidden -PassThru
     $deadline = (Get-Date).AddMinutes(5)
     while (-not (Test-Path -LiteralPath $ResultsPath) -and (Get-Date) -lt $deadline) {
         Start-Sleep -Seconds 2
@@ -98,29 +98,31 @@ function Invoke-UnityUntilResults([string[]]$Arguments, [string]$ResultsPath) {
     }
 }
 
-$testResults = Join-Path $artifactRoot "editmode-results.xml"
-$testLog = Join-Path $artifactRoot "editmode.log"
 Write-Host "[precompletion] typecheck (Unity C# compilation)" -ForegroundColor Cyan
-Write-Host "[precompletion] EditMode tests" -ForegroundColor Cyan
-if (Test-Path -LiteralPath $testResults) {
-    Remove-Item -LiteralPath $testResults -Force
-}
+foreach ($testPlatform in @("editmode", "playmode")) {
+    $testResults = Join-Path $artifactRoot "$testPlatform-results.xml"
+    $testLog = Join-Path $artifactRoot "$testPlatform.log"
+    Write-Host "[precompletion] $testPlatform tests" -ForegroundColor Cyan
+    if (Test-Path -LiteralPath $testResults) {
+        Remove-Item -LiteralPath $testResults -Force
+    }
     Invoke-UnityUntilResults @(
         "-batchmode", "-nographics", "-projectPath", $ProjectRoot,
-        "-runTests", "-testPlatform", "editmode", "-testResults", $testResults,
+        "-runTests", "-testPlatform", $testPlatform, "-testResults", $testResults,
         "-logFile", $testLog
     ) -ResultsPath $testResults
-if (-not (Test-Path -LiteralPath $testResults)) {
-    throw "Unity did not produce EditMode test results. See $testLog"
-}
-$compileErrors = Select-String -Path $testLog -Pattern "error CS[0-9]+" -SimpleMatch:$false -ErrorAction SilentlyContinue
-if ($compileErrors) {
-    throw "Unity typecheck reported compiler errors. See $testLog"
-}
-$testSummary = Get-Content -LiteralPath $testResults -Raw
-if ($testSummary -notmatch '<test-run\b[^>]*result="Passed"' -or
-    $testSummary -match '<test-run\b[^>]*failed="[1-9][0-9]*"') {
-    throw "EditMode tests did not pass. See $testResults and $testLog"
+    if (-not (Test-Path -LiteralPath $testResults)) {
+        throw "Unity did not produce $testPlatform test results. See $testLog"
+    }
+    $compileErrors = Select-String -Path $testLog -Pattern "error CS[0-9]+" -SimpleMatch:$false -ErrorAction SilentlyContinue
+    if ($compileErrors) {
+        throw "Unity typecheck reported compiler errors. See $testLog"
+    }
+    $testSummary = Get-Content -LiteralPath $testResults -Raw
+    if ($testSummary -notmatch '<test-run\b[^>]*result="Passed"' -or
+        $testSummary -match '<test-run\b[^>]*failed="[1-9][0-9]*"') {
+        throw "$testPlatform tests did not pass. See $testResults and $testLog"
+    }
 }
 
 if ($RunBuild) {
