@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 public static class CiBuild
@@ -64,6 +65,42 @@ public static class CiBuild
         ValidateUncompressedWebGlResources(Path.Combine(outputPath, "Build"));
 
         Debug.Log($"CI WebGL build succeeded: {outputPath} ({report.summary.totalSize} bytes)");
+    }
+
+    /// <summary>
+    /// Builds an independent, playable visual acceptance fixture. The source
+    /// scene and normal build scene list are never edited or replaced.
+    /// </summary>
+    public static void PerformRiceKeeperVisualWebGlBuild()
+    {
+        string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+        string outputPath = Path.GetFullPath(Path.Combine(projectRoot, "Builds", "RiceKeeperPreview"));
+        if (!File.Exists(Path.Combine(projectRoot, WebGlRoguelikeScene)))
+            throw new BuildFailedException($"Visual preview source scene is missing: {WebGlRoguelikeScene}");
+
+        string fixturePath = AssetDatabase.GenerateUniqueAssetPath("Assets/Scenes/RiceKeeperVisualPreview.unity");
+        try
+        {
+            var scene = EditorSceneManager.OpenScene(WebGlRoguelikeScene, OpenSceneMode.Single);
+            new GameObject("RiceKeeper visual acceptance").AddComponent<RiceKeeperVisualPreview>();
+            if (!EditorSceneManager.SaveScene(scene, fixturePath, true))
+                throw new BuildFailedException("Could not save the separate visual preview scene.");
+
+            Directory.CreateDirectory(outputPath);
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.decompressionFallback = false;
+            BuildReport report = BuildPipeline.BuildPlayer(new[] { fixturePath }, outputPath,
+                BuildTarget.WebGL, BuildOptions.StrictMode | BuildOptions.Development);
+            if (report.summary.result != BuildResult.Succeeded)
+                throw new BuildFailedException($"RiceKeeper visual WebGL build failed: {report.summary.result}");
+            ValidateUncompressedWebGlResources(Path.Combine(outputPath, "Build"));
+            Debug.Log($"RiceKeeper visual WebGL build succeeded: {outputPath} ({report.summary.totalSize} bytes)");
+        }
+        finally
+        {
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            AssetDatabase.DeleteAsset(fixturePath);
+        }
     }
 
     private static void ValidateUncompressedWebGlResources(string resourceDirectory)
