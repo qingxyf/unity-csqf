@@ -9,6 +9,15 @@ on:
       - Assets/Scripts/Editor/CiBuild.cs
       - Assets/Scripts/Validation/**
       - Assets/Tests/PlayMode/RiceKeeperVisualPreviewPlayModeTests.cs
+      - Assets/Art/Roguelike/Enemies/RiceKeeper/**
+      - Assets/Art/Roguelike/Events/**
+      - Assets/Resources/Enemies/RiceKeeper.prefab*
+      - Assets/Resources/Events/**
+      - Assets/Scripts/NodeSystem/EventManager.cs
+      - Assets/Scripts/NodeSystem/EventPool.cs
+      - Assets/Scripts/CardSystem/CombatController.cs
+      - Assets/Scripts/Combat/Enemy.cs
+      - Assets/Scripts/Combat/RoguelikeEnemyPresentation.cs
 
 permissions:
   contents: read
