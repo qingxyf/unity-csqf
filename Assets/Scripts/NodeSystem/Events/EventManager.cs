@@ -27,7 +27,11 @@ public class EventManager : NodeContentController
     private string lastGrantedCollectibleName;
     private string lastUpgradedCardName;
     private Button boundContinueButton;
+    private bool specialCombatActive;
+    private RectTransform runtimeEventPanel;
 
+    public EventData CurrentEvent => currentEvent;
+    public CombatController ActiveEventCombat { get; private set; }
     public string LastGrantedCollectibleName => lastGrantedCollectibleName;
     public string LastUpgradedCardName => lastUpgradedCardName;
 
@@ -57,15 +61,27 @@ public class EventManager : NodeContentController
 
     public void ShowRandomEvent()
     {
-        if (eventPool == null || eventPool.Count == 0)
+        if (CompletionRequested || !IsCurrentSession()) return;
+        currentEvent = EventPool.Draw(eventPool);
+        if (currentEvent == null)
         {
-            Debug.LogWarning("EventManager: event pool is empty.");
-            OnContinue();
+            ShowExhaustedEventPool();
             return;
         }
-
-        currentEvent = EventPool.Draw(eventPool);
         DisplayEvent(currentEvent);
+    }
+
+    private void ShowExhaustedEventPool()
+    {
+        EnsureChoiceUI();
+        BindContinueButton();
+        TryBeginCompletion();
+        if (titleText != null) titleText.text = "静谧的路口";
+        if (descriptionText != null) descriptionText.text = "本局已没有新的可遇事件。你整理行装，继续前行。";
+        SetIllustration(null);
+        if (choiceButtonContainer != null) choiceButtonContainer.gameObject.SetActive(false);
+        if (resultPanel != null) resultPanel.SetActive(true);
+        if (resultText != null) resultText.text = "每个事件每局仅能遇到一次。新的旅程会重置事件池。";
     }
 
     private void DisplayEvent(EventData evt)
@@ -86,18 +102,7 @@ public class EventManager : NodeContentController
         if (descriptionText != null)
             descriptionText.text = evt.description;
 
-        if (illustrationImage != null)
-        {
-            if (evt.illustration != null)
-            {
-                illustrationImage.sprite = evt.illustration;
-                illustrationImage.gameObject.SetActive(true);
-            }
-            else
-            {
-                illustrationImage.gameObject.SetActive(false);
-            }
-        }
+        SetIllustration(evt.illustration);
 
         if (choiceButtonContainer != null)
         {
@@ -156,6 +161,10 @@ public class EventManager : NodeContentController
         if (choice.cardsToRemove > 0) hints.Add($"移除 {choice.cardsToRemove} 张卡牌");
         if (choice.grantCollectible) hints.Add("获得藏品");
         if (choice.isGamble) hints.Add($"{choice.gambleSuccessRate * 100:F0}% 成功");
+        if (!string.IsNullOrWhiteSpace(choice.unlockEventId)) hints.Add("事件进入新的走向：解锁后续事件");
+        if (choice.surrenderAllGold) hints.Add($"交出全部 {Mathf.Max(0, PlayerStats.Instance != null ? PlayerStats.Instance.gold : 0)} 金币");
+        if (choice.StartsCombat)
+            hints.Add($"敌人：生命 {choice.combatEncounter.maxHealth} / 攻击 {choice.combatEncounter.attackDamage} / 护盾 {choice.combatEncounter.initialShield}");
 
         return string.Join("  ", hints);
     }
@@ -163,13 +172,30 @@ public class EventManager : NodeContentController
     private void OnChoiceSelected(int index)
     {
         if (currentEvent == null || currentEvent.choices == null || index < 0 || index >= currentEvent.choices.Count) return;
-        if (CompletionRequested) return;
+        if (CompletionRequested || !IsCurrentSession()) return;
 
         lastGrantedCollectibleName = null;
         lastUpgradedCardName = null;
 
         EventChoice choice = currentEvent.choices[index];
         if (choice == null) return;
+        int surrenderedGold = choice.surrenderAllGold && PlayerStats.Instance != null
+            ? Mathf.Max(0, PlayerStats.Instance.gold) : 0;
+        CombatController pendingCombat = null;
+        if (choice.StartsCombat)
+        {
+            // Configure while inactive so Start cannot spawn a default encounter.
+            GameObject combatObject = new GameObject("EventChallengeCombat");
+            combatObject.SetActive(false);
+            combatObject.transform.SetParent(transform, false);
+            pendingCombat = combatObject.AddComponent<CombatController>();
+            if (!pendingCombat.ConfigureEventEncounter(choice.combatEncounter))
+            {
+                Destroy(combatObject);
+                Debug.LogWarning("EventManager: event challenger is not configured; no effects were applied.");
+                return;
+            }
+        }
         string resultMessage;
 
         if (choice.isGamble)
@@ -178,11 +204,19 @@ public class EventManager : NodeContentController
             if (success)
             {
                 if (!ApplyChoiceEffects(choice))
+                {
+                    if (pendingCombat != null) Destroy(pendingCombat.gameObject);
                     return;
+                }
                 resultMessage = choice.resultDescription;
             }
             else
             {
+                if (pendingCombat != null)
+                {
+                    Destroy(pendingCombat.gameObject);
+                    pendingCombat = null;
+                }
                 if (!ApplyHealthChange(choice.gambleFailHealthChange))
                     return;
                 resultMessage = choice.gambleFailText;
@@ -191,12 +225,27 @@ public class EventManager : NodeContentController
         else
         {
             if (!ApplyChoiceEffects(choice))
+            {
+                if (pendingCombat != null) Destroy(pendingCombat.gameObject);
                 return;
+            }
             resultMessage = choice.resultDescription;
         }
 
         if (!TryBeginCompletion())
+        {
+            if (pendingCombat != null) Destroy(pendingCombat.gameObject);
             return;
+        }
+
+        if (pendingCombat != null)
+        {
+            StartEventCombat(pendingCombat);
+            return;
+        }
+
+        if (choice.surrenderAllGold)
+            resultMessage += $"\n\n上交金币：{surrenderedGold}";
 
         if (!string.IsNullOrEmpty(lastGrantedCollectibleName))
             resultMessage = $"{resultMessage}\n\n获得藏品：{lastGrantedCollectibleName}";
@@ -237,6 +286,12 @@ public class EventManager : NodeContentController
         if (choice.manaChange != 0)
             player.RestoreMana(choice.manaChange);
 
+        if (choice.surrenderAllGold)
+            player.SpendGold(Mathf.Max(0, player.gold));
+
+        if (!string.IsNullOrWhiteSpace(choice.unlockEventId))
+            EventPool.UnlockEvent(choice.unlockEventId);
+
         if (choice.grantCollectible)
         {
             CollectibleData collectible = CollectibleManager.CreateRandomCollectible();
@@ -268,6 +323,19 @@ public class EventManager : NodeContentController
         }
 
         return true;
+    }
+
+    private void StartEventCombat(CombatController combat)
+    {
+        specialCombatActive = true;
+        ActiveEventCombat = combat;
+        combat.BindNode(BoundNode, BoundSessionToken);
+        if (choiceButtonContainer != null) choiceButtonContainer.gameObject.SetActive(false);
+        if (resultPanel != null) resultPanel.SetActive(false);
+        if (continueButton != null) continueButton.interactable = false;
+        foreach (Canvas canvas in GetComponentsInChildren<Canvas>(true))
+            if (!canvas.transform.IsChildOf(combat.transform)) canvas.gameObject.SetActive(false);
+        combat.gameObject.SetActive(true);
     }
 
     private bool ApplyHealthChange(int healthChange)
@@ -332,20 +400,29 @@ public class EventManager : NodeContentController
             canvasObject.AddComponent<GraphicRaycaster>();
         }
 
-        GameObject panel = CreatePanel("EventPanel", canvas.transform, new Vector2(760f, 520f), new Color(0.05f, 0.05f, 0.08f, 0.92f));
+        GameObject panel = CreatePanel("EventPanel", canvas.transform, new Vector2(960f, 600f), new Color(0.05f, 0.05f, 0.08f, 0.96f));
         RectTransform panelRect = panel.GetComponent<RectTransform>();
+        runtimeEventPanel = panelRect;
         panelRect.anchorMin = new Vector2(0.5f, 0.5f);
         panelRect.anchorMax = new Vector2(0.5f, 0.5f);
         panelRect.anchoredPosition = Vector2.zero;
 
-        titleText = CreateText("Title", panel.transform, "事件", 34, TextAlignmentOptions.Center, new Vector2(680f, 60f), new Vector2(0f, 205f));
-        descriptionText = CreateText("Description", panel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(660f, 160f), new Vector2(0f, 85f));
+        titleText = CreateText("Title", panel.transform, "事件", 34, TextAlignmentOptions.Center, new Vector2(880f, 54f), new Vector2(0f, 250f));
+        descriptionText = CreateText("Description", panel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(880f, 224f), new Vector2(0f, 94f));
+        GameObject illustrationObject = new GameObject("Illustration", typeof(RectTransform), typeof(Image));
+        illustrationObject.transform.SetParent(panel.transform, false);
+        illustrationImage = illustrationObject.GetComponent<Image>();
+        illustrationImage.preserveAspect = true;
+        illustrationImage.raycastTarget = false;
+        illustrationImage.rectTransform.sizeDelta = new Vector2(420f, 224f);
+        illustrationImage.rectTransform.anchoredPosition = new Vector2(-230f, 94f);
+        illustrationObject.SetActive(false);
 
         GameObject choiceRoot = new GameObject("Choices", typeof(RectTransform));
         choiceRoot.transform.SetParent(panel.transform, false);
         RectTransform choiceRect = choiceRoot.GetComponent<RectTransform>();
-        choiceRect.sizeDelta = new Vector2(660f, 180f);
-        choiceRect.anchoredPosition = new Vector2(0f, -115f);
+        choiceRect.sizeDelta = new Vector2(880f, 180f);
+        choiceRect.anchoredPosition = new Vector2(0f, -155f);
         VerticalLayoutGroup layout = choiceRoot.AddComponent<VerticalLayoutGroup>();
         layout.spacing = 10f;
         layout.childControlHeight = true;
@@ -353,16 +430,30 @@ public class EventManager : NodeContentController
         layout.childForceExpandHeight = false;
         choiceButtonContainer = choiceRoot.transform;
 
-        choiceButtonPrefab = CreateButtonObject("RuntimeChoiceButton", "选择", new Vector2(660f, 48f));
+        choiceButtonPrefab = CreateButtonObject("RuntimeChoiceButton", "选择", new Vector2(880f, 48f));
         choiceButtonPrefab.SetActive(false);
         choiceButtonPrefab.transform.SetParent(transform, false);
 
-        resultPanel = CreatePanel("ResultPanel", panel.transform, new Vector2(680f, 230f), new Color(0.08f, 0.08f, 0.12f, 0.96f));
-        resultPanel.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -65f);
-        resultText = CreateText("ResultText", resultPanel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(620f, 140f), new Vector2(0f, 35f));
-        continueButton = CreateButton("ContinueButton", resultPanel.transform, "继续", new Vector2(180f, 48f), new Vector2(0f, -75f));
+        resultPanel = CreatePanel("ResultPanel", panel.transform, new Vector2(880f, 214f), new Color(0.08f, 0.08f, 0.12f, 0.96f));
+        resultPanel.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -151f);
+        resultText = CreateText("ResultText", resultPanel.transform, "", 22, TextAlignmentOptions.TopLeft, new Vector2(820f, 120f), new Vector2(0f, 30f));
+        continueButton = CreateButton("ContinueButton", resultPanel.transform, "继续", new Vector2(180f, 48f), new Vector2(0f, -70f));
         BindContinueButton();
         resultPanel.SetActive(false);
+    }
+
+    private void SetIllustration(Sprite sprite)
+    {
+        if (illustrationImage != null)
+        {
+            illustrationImage.sprite = sprite;
+            illustrationImage.gameObject.SetActive(sprite != null);
+        }
+        if (runtimeEventPanel != null && descriptionText != null)
+        {
+            descriptionText.rectTransform.sizeDelta = new Vector2(sprite != null ? 400f : 880f, 224f);
+            descriptionText.rectTransform.anchoredPosition = new Vector2(sprite != null ? 240f : 0f, 94f);
+        }
     }
 
     // EventContent deliberately has no serialized UI references. DisplayEvent invokes this
@@ -408,6 +499,7 @@ public class EventManager : NodeContentController
         tmp.fontSize = size;
         tmp.alignment = alignment;
         tmp.enableWordWrapping = true;
+        tmp.raycastTarget = false;
         RectTransform rect = tmp.rectTransform;
         rect.sizeDelta = rectSize;
         rect.anchoredPosition = position;
@@ -445,6 +537,16 @@ public class EventManager : NodeContentController
 
     private void OnContinue()
     {
+        if (specialCombatActive) return;
         TryCompleteNode();
+    }
+
+    private bool IsCurrentSession()
+    {
+        GameManager manager = GameManager.Instance;
+        if (manager == null || BoundNode == null) return true;
+        return manager.CurrentNode == BoundNode &&
+            (BoundSessionToken == 0 || manager.CurrentContentSession == BoundSessionToken) &&
+            (manager.RunController == null || !manager.RunController.IsTerminal);
     }
 }

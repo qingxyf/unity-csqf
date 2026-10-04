@@ -69,13 +69,13 @@ public class NodeRuntimeUiPlayModeTests
 
         EventManager manager = Object.FindObjectOfType<EventManager>();
         Assert.That(manager, Is.Not.Null);
-        Assert.That(manager.eventPool.Count, Is.EqualTo(18));
+        Assert.That(manager.eventPool.Count, Is.EqualTo(20));
         Assert.That(manager.titleText.text, Is.Not.Empty);
         Assert.That(manager.descriptionText.text, Is.Not.Empty);
         Assert.That(manager.choiceButtonContainer, Is.Not.Null);
         Assert.That(manager.choiceButtonContainer.GetComponent<RectTransform>(), Is.Not.Null);
         Button[] buttons = manager.choiceButtonContainer.GetComponentsInChildren<Button>();
-        Assert.That(buttons.Length, Is.EqualTo(3));
+        Assert.That(buttons.Length, Is.EqualTo(manager.CurrentEvent.choices.Count));
         Canvas.ForceUpdateCanvases();
         AssertButtonsHaveUsableLayout(manager.choiceButtonContainer, buttons, 48f);
         Assert.That(CountNamedChildren(manager.gameObject, "EventPanel"), Is.EqualTo(1));

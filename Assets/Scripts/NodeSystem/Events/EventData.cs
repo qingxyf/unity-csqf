@@ -4,6 +4,9 @@ using System.Collections.Generic;
 [CreateAssetMenu(menuName = "Node System/Event Data")]
 public class EventData : ScriptableObject
 {
+    [Tooltip("Stable run-pool identity. Leave empty only for legacy authored events.")]
+    public string eventId;
+    public bool requiresUnlock;
     public string eventName;
     [TextArea(3, 6)]
     public string description;
@@ -42,4 +45,25 @@ public class EventChoice
     public int rewardMaxCost = 99;
     public int previewCardChoices;
     public bool grantCollectible;
+
+    [Header("事件走向")]
+    [Tooltip("Unlocks this event id after the choice resolves.")]
+    public string unlockEventId;
+    public bool surrenderAllGold;
+    public EventCombatEncounter combatEncounter;
+
+    // Unity inline serialization may deserialize an absent class as an empty
+    // object. Its resource path, rather than reference nullness, enables combat.
+    public bool StartsCombat => combatEncounter != null &&
+        !string.IsNullOrWhiteSpace(combatEncounter.enemyResourcePath);
+}
+
+[System.Serializable]
+public class EventCombatEncounter
+{
+    public string enemyResourcePath;
+    public string enemyName;
+    public int maxHealth;
+    public int attackDamage;
+    public int initialShield;
 }

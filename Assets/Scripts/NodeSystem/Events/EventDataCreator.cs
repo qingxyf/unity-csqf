@@ -31,7 +31,9 @@ public class EventDataCreator : MonoBehaviour
             { "元素神龛", "Assets/Sprites/Events/event_element_shrine.png" },
             { "镜中迷宫", "Assets/Sprites/Events/event_mirror_maze.png" },
             { "无声花园", "Assets/Sprites/Events/event_silent_garden.png" },
-            { "暴风断桥", "Assets/Sprites/Events/event_storm_bridge.png" }
+            { "暴风断桥", "Assets/Sprites/Events/event_storm_bridge.png" },
+            { "野生营地", "Assets/Art/Roguelike/Events/WildCamp.png" },
+            { "大白饭的讨债人", "Assets/Art/Roguelike/Events/RiceOwnerReckoning.png" }
         };
 
         foreach (EventData evt in EventLibrary.CreateDefaultEvents())
@@ -40,15 +42,21 @@ public class EventDataCreator : MonoBehaviour
                 evt.illustration = AssetDatabase.LoadAssetAtPath<Sprite>(illustrationPath);
 
             string assetPath = $"{folder}/Event_{evt.eventName}.asset";
-            if (AssetDatabase.LoadAssetAtPath<EventData>(assetPath) != null)
-                AssetDatabase.DeleteAsset(assetPath);
-
-            AssetDatabase.CreateAsset(evt, assetPath);
+            EventData existing = AssetDatabase.LoadAssetAtPath<EventData>(assetPath);
+            if (existing != null)
+            {
+                if (evt.illustration == null) evt.illustration = existing.illustration;
+                EditorUtility.CopySerialized(evt, existing);
+                EditorUtility.SetDirty(existing);
+                Object.DestroyImmediate(evt);
+            }
+            else
+                AssetDatabase.CreateAsset(evt, assetPath);
         }
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("12 个默认事件创建完成！在 Resources/Events/ 下查看。");
+        Debug.Log("默认事件已更新；保留已有资源 GUID。在 Resources/Events/ 下查看。");
     }
 
     // === 事件1：古老祭坛 ===

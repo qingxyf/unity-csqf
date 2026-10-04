@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -13,7 +14,7 @@ public class ContentPoolTests
     }
 
     [Test]
-    public void EventPoolDrawsEveryEventBeforeRepeatingAndResets()
+    public void EventPoolDrawsEveryEventOnceThenExhaustsAndResets()
     {
         List<EventData> events = new List<EventData>();
         for (int i = 0; i < 3; i++)
@@ -26,6 +27,7 @@ public class ContentPoolTests
         HashSet<EventData> drawn = new HashSet<EventData>();
         for (int i = 0; i < events.Count; i++) drawn.Add(EventPool.Draw(events));
         Assert.That(drawn.Count, Is.EqualTo(events.Count));
+        Assert.That(EventPool.Draw(events), Is.Null);
 
         EventPool.ResetForNewRun();
         Assert.That(EventPool.Draw(events), Is.Not.Null);
@@ -33,22 +35,68 @@ public class ContentPoolTests
     }
 
     [Test]
-    public void EventPoolDoesNotResetWhenTheSameSourceIsReordered()
+    public void EventPoolDoesNotResetWhenSourcesAreReorderedOrExpanded()
     {
         EventData first = ScriptableObject.CreateInstance<EventData>();
         EventData second = ScriptableObject.CreateInstance<EventData>();
         EventData third = ScriptableObject.CreateInstance<EventData>();
+        EventData fourth = ScriptableObject.CreateInstance<EventData>();
+        fourth.eventName = "Event 4";
         List<EventData> events = new List<EventData> { first, second, third };
 
         EventData drawnFirst = EventPool.Draw(events);
         events.Reverse();
-        EventData drawnSecond = EventPool.Draw(events);
-        EventData drawnThird = EventPool.Draw(events);
+        events.Add(fourth);
 
-        Assert.That(new HashSet<EventData> { drawnFirst, drawnSecond, drawnThird }.Count, Is.EqualTo(3));
+        HashSet<EventData> drawn = new HashSet<EventData> { drawnFirst };
+        for (int i = 0; i < 3; i++)
+            drawn.Add(EventPool.Draw(new List<EventData>(events)));
+
+        Assert.That(drawn.Count, Is.EqualTo(4));
+        Assert.That(EventPool.Draw(events), Is.Null);
         Object.DestroyImmediate(first);
         Object.DestroyImmediate(second);
         Object.DestroyImmediate(third);
+        Object.DestroyImmediate(fourth);
+    }
+
+    [Test]
+    public void EventPoolTreatsDifferentInstancesWithTheSameIdAsOneEvent()
+    {
+        EventData first = CreateEvent("shared-id", "First instance");
+        EventData replacement = CreateEvent("shared-id", "Rebuilt instance");
+        List<EventData> events = new List<EventData> { first, replacement };
+
+        Assert.That(EventPool.Draw(events), Is.Not.Null);
+        Assert.That(EventPool.Draw(events), Is.Null);
+
+        Object.DestroyImmediate(first);
+        Object.DestroyImmediate(replacement);
+    }
+
+    [Test]
+    public void LockedEventBecomesEligibleOnceAfterUnlockAndResetClearsTheUnlock()
+    {
+        EventData ordinary = CreateEvent("ordinary", "Ordinary");
+        EventData locked = CreateEvent("locked", "Locked");
+        locked.requiresUnlock = true;
+        List<EventData> events = new List<EventData> { ordinary, locked };
+
+        Assert.That(EventPool.Draw(events), Is.SameAs(ordinary));
+        Assert.That(EventPool.Draw(events), Is.Null);
+
+        EventPool.UnlockEvent("locked");
+        Assert.That(EventPool.IsUnlocked("locked"), Is.True);
+        Assert.That(EventPool.Draw(events), Is.SameAs(locked));
+        Assert.That(EventPool.Draw(events), Is.Null);
+
+        EventPool.ResetForNewRun();
+        Assert.That(EventPool.IsUnlocked("locked"), Is.False);
+        Assert.That(EventPool.Draw(events), Is.SameAs(ordinary));
+        Assert.That(EventPool.Draw(events), Is.Null);
+
+        Object.DestroyImmediate(ordinary);
+        Object.DestroyImmediate(locked);
     }
 
     [Test]
@@ -73,14 +121,18 @@ public class ContentPoolTests
         Assert.That(secondManagerPool.Count, Is.EqualTo(firstManagerPool.Count));
         Assert.That(secondManagerPool[0], Is.SameAs(firstManagerPool[0]));
 
+        int eligibleCount = firstManagerPool.Count(evt => !evt.requiresUnlock);
         HashSet<EventData> drawn = new HashSet<EventData>();
-        for (int i = 0; i < firstManagerPool.Count; i++)
+        for (int i = 0; i < eligibleCount; i++)
         {
             List<EventData> source = i % 2 == 0 ? firstManagerPool : secondManagerPool;
-            drawn.Add(EventPool.Draw(source));
+            EventData evt = EventPool.Draw(source);
+            Assert.That(evt, Is.Not.Null);
+            drawn.Add(evt);
         }
 
-        Assert.That(drawn.Count, Is.EqualTo(firstManagerPool.Count));
+        Assert.That(drawn.Count, Is.EqualTo(eligibleCount));
+        Assert.That(EventPool.Draw(firstManagerPool), Is.Null);
     }
 
     [Test]
@@ -103,7 +155,7 @@ public class ContentPoolTests
     [Test]
     public void NewEventResourcesImportAsEventDataAssets()
     {
-        string[] paths =
+        string[] existingThreeChoicePaths =
         {
             "Assets/Resources/Events/Event_月下商队.asset",
             "Assets/Resources/Events/Event_低语古井.asset",
@@ -113,7 +165,7 @@ public class ContentPoolTests
             "Assets/Resources/Events/Event_沉没圣所.asset"
         };
 
-        foreach (string path in paths)
+        foreach (string path in existingThreeChoicePaths)
         {
             EventData evt = AssetDatabase.LoadAssetAtPath<EventData>(path);
             Assert.That(evt, Is.Not.Null, path);
@@ -121,12 +173,29 @@ public class ContentPoolTests
         }
 
         EventData[] allEvents = Resources.LoadAll<EventData>("Events");
-        Assert.That(allEvents.Length, Is.EqualTo(18));
+        Assert.That(allEvents.Length, Is.EqualTo(20));
         foreach (EventData evt in allEvents)
         {
-            Assert.That(evt.choices, Has.Count.EqualTo(3), evt.eventName);
+            Assert.That(evt.choices, Is.Not.Null, evt.eventName);
+            Assert.That(evt.choices.Count, Is.GreaterThanOrEqualTo(2), evt.eventName);
             Assert.That(evt.choices.TrueForAll(choice => choice != null && !string.IsNullOrEmpty(choice.buttonText)), Is.True, evt.eventName);
         }
+
+        EventData wildCamp = AssetDatabase.LoadAssetAtPath<EventData>("Assets/Resources/Events/Event_野生营地.asset");
+        Assert.That(wildCamp.eventId, Is.EqualTo("wild-rice-camp"));
+        Assert.That(wildCamp.requiresUnlock, Is.False);
+        Assert.That(wildCamp.choices, Has.Count.EqualTo(2));
+        Assert.That(wildCamp.choices[1].unlockEventId, Is.EqualTo("rice-owner-reckoning"));
+        Assert.That(wildCamp.choices[1].StartsCombat, Is.False);
+
+        EventData reckoning = AssetDatabase.LoadAssetAtPath<EventData>("Assets/Resources/Events/Event_大白饭的讨债人.asset");
+        Assert.That(reckoning.eventId, Is.EqualTo("rice-owner-reckoning"));
+        Assert.That(reckoning.requiresUnlock, Is.True);
+        Assert.That(reckoning.choices, Has.Count.EqualTo(2));
+        Assert.That(reckoning.choices[0].surrenderAllGold, Is.True);
+        Assert.That(reckoning.choices[0].StartsCombat, Is.False);
+        Assert.That(reckoning.choices[1].combatEncounter.enemyResourcePath, Is.EqualTo("Enemies/RiceKeeper"));
+        Assert.That(reckoning.choices[1].combatEncounter.maxHealth, Is.EqualTo(240));
     }
 
     [Test]
@@ -159,6 +228,14 @@ public class ContentPoolTests
         Assert.That(CollectibleManager.OwnedCollectibles, Is.Empty);
 
         Object.DestroyImmediate(collectible);
+    }
+
+    private static EventData CreateEvent(string id, string name)
+    {
+        EventData evt = ScriptableObject.CreateInstance<EventData>();
+        evt.eventId = id;
+        evt.eventName = name;
+        return evt;
     }
 
 }

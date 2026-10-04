@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7e979fbed34413468065a17cf115b77, type: 3}
+  m_Name: "大白饭的讨债人"
+  m_EditorClassIdentifier:
+  eventId: rice-owner-reckoning
+  requiresUnlock: 1
+  eventName: "大白饭的讨债人"
+  description: "蓝发的鲸鱼女仆拦住了你，指着空空的电饭锅，脸颊气得鼓鼓的。\n『我的大白饭呢？！一粒都没给我留？这笔账，今天必须算清楚！』"
+  illustration: {fileID: 21300000, guid: 51cbedcdf862468a9e5206c24b72bc93, type: 3}
+  choices:
+  - buttonText: "上交所有的钱"
+    resultDescription: "你把钱袋整个交了出去。她检查了赔偿，气呼呼地把锅盖扣上，终于让开了路。"
+    healthChange: 0
+    maxHealthChange: 0
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+    grantCollectible: 0
+    unlockEventId: ""
+    surrenderAllGold: 1
+  - buttonText: "进入一场艰难的战斗"
+    resultDescription: "蓝色大肥鱼举起料理铲：既然不肯赔钱，就用战斗来偿还吧！"
+    healthChange: 0
+    maxHealthChange: 0
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+    grantCollectible: 0
+    unlockEventId: ""
+    surrenderAllGold: 0
+    combatEncounter:
+      enemyResourcePath: Enemies/RiceKeeper
+      enemyName: "蓝色大肥鱼"
+      maxHealth: 240
+      attackDamage: 24
+      initialShield: 20

@@ -57,6 +57,7 @@ def main():
         ("DuskScavenger", "暮路拾荒者", 0, 3.0),
         ("CopperplumeDuelist", "铜羽执刃者", 1, 3.2),
         ("EclipseArchivist", "蚀月档案官", 2, 3.45),
+        ("RiceKeeper", "蓝色大肥鱼", 1, 3.2),
     ):
         folder = art_root / name
         folder.mkdir(parents=True, exist_ok=True)
@@ -70,8 +71,15 @@ def main():
             ppu = (bounds[3] - bounds[1]) / height
         for sprite in (idle, attack):
             assert sprite.exists(), sprite
+            pose_ppu = ppu
+            if name == "RiceKeeper" and sprite == attack:
+                # Independently generated attack art uses a wider canvas. Keep
+                # its crouched silhouette close to the idle's world height.
+                with Image.open(sprite) as image:
+                    attack_bounds = image.getchannel("A").point(lambda value: 255 if value > 32 else 0).getbbox()
+                    pose_ppu = (attack_bounds[3] - attack_bounds[1]) / (height * 0.94)
             content = re.sub(r"guid: [0-9a-f]+", f"guid: {guid(sprite)}", texture_meta, count=1)
-            content = re.sub(r"spritePixelsToUnits: .*", f"spritePixelsToUnits: {ppu:.4f}", content)
+            content = re.sub(r"spritePixelsToUnits: .*", f"spritePixelsToUnits: {pose_ppu:.4f}", content)
             content = re.sub(r"spriteID: .*", f"spriteID: {guid(sprite)}", content)
             content = content.replace("maxTextureSize: 2048", "maxTextureSize: 1024")
             write(Path(str(sprite) + ".meta"), content)
@@ -187,6 +195,9 @@ SpriteRenderer:
         prefab = prefab_root / f"{name}.prefab"
         write(prefab, content)
         write(Path(str(prefab) + ".meta"), f"fileFormatVersion: 2\nguid: {guid(prefab)}\nPrefabImporter:\n  externalObjects: {{}}\n")
+        if name == "RiceKeeper":
+            print(f"{name}: height={height} units, ppu={ppu:.1f}, event challenger prefab wired")
+            continue
         battle_name = ("BattleContent", "EliteBattleContent", "BossContent")[profile]
         battle = ASSETS / "Prefabs/NodeContent" / f"{battle_name}.prefab"
         text = battle.read_text(encoding="utf-8")

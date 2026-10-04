@@ -41,6 +41,27 @@ public class CombatController : NodeContentController
     private bool rewardShown;
     private int displayedCollectibleCount = -1;
     public bool AcceptsPlayerActions => combatActive && !resolvingTurn && !rewardShown;
+    public EventCombatEncounter EventEncounter { get; private set; }
+
+    /// <summary>Configure a single event challenger before Start runs.</summary>
+    public bool ConfigureEventEncounter(EventCombatEncounter encounter)
+    {
+        if (combatActive || encounter == null ||
+            string.IsNullOrWhiteSpace(encounter.enemyResourcePath) ||
+            encounter.maxHealth <= 0 || encounter.attackDamage < 0 || encounter.initialShield < 0)
+            return false;
+
+        GameObject challenger = Resources.Load<GameObject>(encounter.enemyResourcePath);
+        if (challenger == null || challenger.GetComponent<Enemy>() == null)
+            return false;
+
+        EventEncounter = encounter;
+        enemyPrefab = challenger;
+        eliteEnemyCount = 1;
+        isEliteBattle = true;
+        isBossBattle = false;
+        return true;
+    }
 
     private void Awake()
     {
@@ -297,7 +318,8 @@ public class CombatController : NodeContentController
 
     private void SpawnDefaultEnemies()
     {
-        int count = isBossBattle ? 1 : (isEliteBattle ? eliteEnemyCount : normalEnemyCount);
+        int count = EventEncounter != null ? 1 :
+            (isBossBattle ? 1 : (isEliteBattle ? eliteEnemyCount : normalEnemyCount));
         if (enemyPrefab == null)
             enemyPrefab = Resources.Load<GameObject>("Enemies/" +
                 (isBossBattle ? "EclipseArchivist" : (isEliteBattle ? "CopperplumeDuelist" : "DuskScavenger")));
@@ -406,10 +428,20 @@ public class CombatController : NodeContentController
 
     private void ConfigureEnemy(Enemy enemy, int index)
     {
-        if (string.IsNullOrEmpty(enemy.enemyName) || enemy.enemyName == "Enemy")
-            enemy.enemyName = isBossBattle ? "终途领袖" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
-        enemy.maxHealth = isBossBattle ? 320 : (isEliteBattle ? 120 + index * 20 : 70 + index * 15);
-        enemy.baseAttack = isBossBattle ? 26 : (isEliteBattle ? 18 + index * 3 : 10 + index * 2);
+        if (EventEncounter != null)
+        {
+            enemy.enemyName = EventEncounter.enemyName;
+            enemy.maxHealth = EventEncounter.maxHealth;
+            enemy.baseAttack = EventEncounter.attackDamage;
+            enemy.currentShield = EventEncounter.initialShield;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(enemy.enemyName) || enemy.enemyName == "Enemy")
+                enemy.enemyName = isBossBattle ? "终途领袖" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
+            enemy.maxHealth = isBossBattle ? 320 : (isEliteBattle ? 120 + index * 20 : 70 + index * 15);
+            enemy.baseAttack = isBossBattle ? 26 : (isEliteBattle ? 18 + index * 3 : 10 + index * 2);
+        }
         enemy.currentHealth = enemy.maxHealth;
 
         EnemyManager.EnsureInstance();

@@ -24,7 +24,9 @@ public static class EventLibrary
             CreateAshenForge(),
             CreateFallenObservatory(),
             CreateBoundSpirit(),
-            CreateSunkenSanctuary()
+            CreateSunkenSanctuary(),
+            CreateWildRiceCamp(),
+            CreateRiceOwnerReckoning()
         };
     }
 
@@ -292,5 +294,41 @@ public static class EventLibrary
         EventChoice pray = Choice("向潮汐祈祷", "水流抚平伤口，带来温和的庇护。 "); pray.healthChange = 25; pray.shieldGain = 10;
         EventChoice gather = Choice("收集珊瑚", "珊瑚的纹路引导你找到水系的力量。 "); gather.cardsToDraw = 2; gather.useRewardElement = true; gather.rewardElement = CardElement.Water;
         return CreateEvent("沉没圣所", "潮水退去后，古老圣所的门扉从礁石间显露出来。", dive, pray, gather);
+    }
+
+    private static EventData CreateWildRiceCamp()
+    {
+        EventChoice taste = Choice("吃一点大米饭", "你盛了一小碗，给锅里留下大半。热腾腾的白饭让你恢复了一些体力。");
+        taste.healthChange = 15;
+
+        EventChoice finish = Choice("吃光大米饭", "你把锅底最后一粒米也吃掉了，精神焕发。蓝色鲸鱼图案的碗却提醒着你：这顿饭有主人。\n\n事件进入新的走向：『大白饭的讨债人』已加入本局事件池。");
+        finish.healthChange = 30;
+        finish.maxHealthChange = 8;
+        finish.unlockEventId = "rice-owner-reckoning";
+
+        EventData evt = CreateEvent("野生营地", "残破的帐篷间，一口电饭锅刚跳到保温。锅盖下的白米饭还冒着热气，旁边的碗筷摆得整整齐齐。\n营地主人似乎只是暂时离开了。", taste, finish);
+        evt.eventId = "wild-rice-camp";
+        return evt;
+    }
+
+    private static EventData CreateRiceOwnerReckoning()
+    {
+        EventChoice surrender = Choice("上交所有的钱", "你把钱袋整个交了出去。她检查了赔偿，气呼呼地把锅盖扣上，终于让开了路。");
+        surrender.surrenderAllGold = true;
+
+        EventChoice fight = Choice("进入一场艰难的战斗", "蓝色大肥鱼举起料理铲：既然不肯赔钱，就用战斗来偿还吧！");
+        fight.combatEncounter = new EventCombatEncounter
+        {
+            enemyResourcePath = "Enemies/RiceKeeper",
+            enemyName = "蓝色大肥鱼",
+            maxHealth = 240,
+            attackDamage = 24,
+            initialShield = 20
+        };
+
+        EventData evt = CreateEvent("大白饭的讨债人", "蓝发的鲸鱼女仆拦住了你，指着空空的电饭锅，脸颊气得鼓鼓的。\n『我的大白饭呢？！一粒都没给我留？这笔账，今天必须算清楚！』", surrender, fight);
+        evt.eventId = "rice-owner-reckoning";
+        evt.requiresUnlock = true;
+        return evt;
     }
 }

@@ -1,0 +1,76 @@
+name: RiceKeeper visual acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - .github/workflows/ricekeeper-visual-preview.yml
+      - Assets/Scripts/Editor/CiBuild.cs
+      - Assets/Scripts/Validation/**
+      - Assets/Tests/PlayMode/RiceKeeperVisualPreviewPlayModeTests.cs
+      - Assets/Art/Roguelike/Enemies/RiceKeeper/**
+      - Assets/Art/Roguelike/Events/**
+      - Assets/Resources/Enemies/RiceKeeper.prefab*
+      - Assets/Resources/Events/**
+      - Assets/Scripts/NodeSystem/Events/**
+      - Assets/Scripts/CardSystem/CombatController.cs
+      - Assets/Scripts/Combat/Enemy.cs
+      - Assets/Scripts/Combat/RoguelikeEnemyPresentation.cs
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ricekeeper-visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Build playable RiceKeeper visual acceptance
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run static checks
+        shell: pwsh
+        run: ./scripts/harness/precompletion.ps1 -SkipUnity -ProjectRoot "$PWD"
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/boost
+          if [ -n "$AGENT_TOOLSDIRECTORY" ]; then
+            sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          fi
+          sudo docker system prune --all --force --volumes
+      - name: Verify Unity activation configuration
+        shell: bash
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_EMAIL" ] || [ -z "$UNITY_PASSWORD" ] || { [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; }; then
+            echo "Unity activation configuration is incomplete." >&2
+            exit 1
+          fi
+      - name: Build independent visual acceptance player
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          projectPath: .
+          unityVersion: 2022.3.49f1
+          targetPlatform: WebGL
+          buildMethod: CiBuild.PerformRiceKeeperVisualWebGlBuild
+          customParameters: -nographics
+      - name: Upload playable visual acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: ricekeeper-visual-preview
+          path: Builds/RiceKeeperPreview
+          if-no-files-found: error
