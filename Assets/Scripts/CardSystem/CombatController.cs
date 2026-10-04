@@ -578,7 +578,8 @@ public class CombatController : NodeContentController
         handView.yOffset = -68f;
         handView.fanAngle = 18f;
         handView.arcDepth = 36f;
-        handView.maxFanWidth = 860f;
+        // Keep larger hands between the two event-duel characters.
+        handView.maxFanWidth = EventEncounter != null ? 400f : 860f;
         handView.hoverLift = 132f;
         handView.hoverScale = 1.4f;
     }
