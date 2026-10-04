@@ -73,6 +73,9 @@ jobs:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
           testMode: all
+          # Pin game-ci CLI resolution so test startup is not coupled to the
+          # GitHub releases API resolving a moving "latest" version.
+          cliVersion: 0.1.72
           artifactsPath: artifacts/unity-tests
           customParameters: -nographics
       - name: Upload test artifacts
@@ -80,7 +83,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unity-test-results
-          path: ${{ steps.editmode-tests.outputs.artifactsPath }}
+          path: artifacts/unity-tests
           if-no-files-found: warn
 
   windows:
