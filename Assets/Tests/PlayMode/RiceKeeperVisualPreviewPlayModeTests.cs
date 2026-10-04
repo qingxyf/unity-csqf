@@ -75,9 +75,9 @@ public class RiceKeeperVisualPreviewPlayModeTests
         Assert.That(challenger.maxHealth, Is.EqualTo(240));
         Assert.That(challenger.baseAttack, Is.EqualTo(24));
         Assert.That(challenger.currentShield, Is.EqualTo(20));
-        Assert.That(challenger.transform.position.x, Is.GreaterThan(PlayerStats.Instance.transform.position.x));
-        Assert.That(PlayerStats.Instance.transform.position.x, Is.LessThan(authoredPlayerPosition.x));
-        Assert.That(PlayerStats.Instance.transform.position.y, Is.EqualTo(authoredPlayerPosition.y));
+        Assert.That(challenger.transform.localPosition, Is.EqualTo(new Vector3(0f, 0.35f, 0f)));
+        Assert.That(challenger.transform.position.y, Is.GreaterThan(PlayerStats.Instance.transform.position.y));
+        Assert.That(PlayerStats.Instance.transform.position, Is.EqualTo(authoredPlayerPosition));
 
         int playerHealth = PlayerStats.Instance.currentHealth;
         int enemyShield = challenger.currentShield;
