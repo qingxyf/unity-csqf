@@ -316,11 +316,11 @@ public static class EventLibrary
         EventChoice surrender = Choice("上交所有的钱", "你把钱袋整个交了出去。她检查了赔偿，气呼呼地把锅盖扣上，终于让开了路。");
         surrender.surrenderAllGold = true;
 
-        EventChoice fight = Choice("进入一场艰难的战斗", "蓝汐举起料理铲：既然不肯赔钱，就用战斗来偿还吧！");
+        EventChoice fight = Choice("进入一场艰难的战斗", "蓝色大肥鱼举起料理铲：既然不肯赔钱，就用战斗来偿还吧！");
         fight.combatEncounter = new EventCombatEncounter
         {
             enemyResourcePath = "Enemies/RiceKeeper",
-            enemyName = "蓝汐·米饭守护者",
+            enemyName = "蓝色大肥鱼",
             maxHealth = 240,
             attackDamage = 24,
             initialShield = 20

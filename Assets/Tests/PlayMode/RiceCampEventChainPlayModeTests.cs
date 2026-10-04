@@ -150,7 +150,7 @@ public class RiceCampEventChainPlayModeTests
         Enemy[] enemies = combat.GetComponentsInChildren<Enemy>();
         Assert.That(enemies, Has.Length.EqualTo(1));
         Enemy challenger = enemies[0];
-        Assert.That(challenger.enemyName, Is.EqualTo("蓝汐·米饭守护者"));
+        Assert.That(challenger.enemyName, Is.EqualTo("蓝色大肥鱼"));
         Assert.That(challenger.maxHealth, Is.EqualTo(240));
         Assert.That(challenger.currentHealth, Is.EqualTo(240));
         Assert.That(challenger.baseAttack, Is.EqualTo(24));

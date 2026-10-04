@@ -244,7 +244,7 @@ public class RiceKeeperVisualPreview : MonoBehaviour
             case PreviewStep.WildRiceCamp: return "吃光大米饭";
             case PreviewStep.WaitingForWildCampCompletion: return "继续前往讨债人";
             case PreviewStep.RiceOwnerReckoning: return "选择艰难战斗";
-            case PreviewStep.Combat: return "与蓝汐战斗";
+            case PreviewStep.Combat: return "与蓝色大肥鱼战斗";
             case PreviewStep.WaitingForReckoningCompletion: return "讨债已结清";
             case PreviewStep.Complete: return "验收完成，可重新开始";
             case PreviewStep.Defeated: return "本次战败，可重新开始";

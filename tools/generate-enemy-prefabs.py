@@ -57,7 +57,7 @@ def main():
         ("DuskScavenger", "暮路拾荒者", 0, 3.0),
         ("CopperplumeDuelist", "铜羽执刃者", 1, 3.2),
         ("EclipseArchivist", "蚀月档案官", 2, 3.45),
-        ("RiceKeeper", "蓝汐·米饭守护者", 1, 3.2),
+        ("RiceKeeper", "蓝色大肥鱼", 1, 3.2),
     ):
         folder = art_root / name
         folder.mkdir(parents=True, exist_ok=True)

@@ -40,6 +40,8 @@ public class CombatController : NodeContentController
     private bool resolvingTurn;
     private bool rewardShown;
     private int displayedCollectibleCount = -1;
+    private Transform stagedPlayer;
+    private Vector3 playerPositionBeforeEventBattle;
     public bool AcceptsPlayerActions => combatActive && !resolvingTurn && !rewardShown;
     public EventCombatEncounter EventEncounter { get; private set; }
 
@@ -115,6 +117,8 @@ public class CombatController : NodeContentController
         combatActive = true;
         resolvingTurn = false;
         rewardShown = false;
+
+        StageEventBattlePlayer();
 
         if (EnemyManager.Instance != null)
             EnemyManager.Instance.ClearNulls();
@@ -403,14 +407,14 @@ public class CombatController : NodeContentController
     {
         GameObject canvasObject = new GameObject("EnemyHealthCanvas");
         canvasObject.transform.SetParent(enemyObject.transform, false);
-        canvasObject.transform.localPosition = new Vector3(0f, 2.35f, 0f);
+        canvasObject.transform.localPosition = new Vector3(0f, EventEncounter != null ? 1.9f : 2.35f, 0f);
         canvasObject.transform.localScale = new Vector3(0.01f, 0.01f, 1f);
 
         Canvas canvas = canvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.WorldSpace;
         canvas.sortingOrder = 10;
         RectTransform canvasRect = canvas.GetComponent<RectTransform>();
-        canvasRect.sizeDelta = new Vector2(180f, 64f);
+        canvasRect.sizeDelta = EventEncounter != null ? new Vector2(270f, 74f) : new Vector2(180f, 64f);
 
         GameObject textObject = new GameObject("HPText");
         textObject.transform.SetParent(canvasObject.transform, false);
@@ -451,9 +455,35 @@ public class CombatController : NodeContentController
 
     private Vector3 GetEnemyPosition(int index, int count)
     {
+        // The middle of the screen is reserved for readable hand-card previews.
+        // Keep an event challenger opposite the authored player, above the hand.
+        if (EventEncounter != null)
+            return new Vector3(4.2f, 0.85f, 0f);
+
         float spacing = 3.2f;
         float startX = -((count - 1) * spacing) * 0.5f;
         return new Vector3(startX + index * spacing, 0.35f, 0f);
+    }
+
+    private void StageEventBattlePlayer()
+    {
+        if (EventEncounter == null || PlayerStats.Instance == null || stagedPlayer != null)
+            return;
+        SpriteRenderer playerBody = PlayerStats.Instance.GetComponentInChildren<SpriteRenderer>();
+        if (playerBody == null || playerBody.sprite == null)
+            return;
+
+        stagedPlayer = PlayerStats.Instance.transform;
+        playerPositionBeforeEventBattle = stagedPlayer.position;
+        stagedPlayer.position = new Vector3(-4.1f, 1.05f, stagedPlayer.position.z);
+    }
+
+    private void OnDisable()
+    {
+        // The scene's player persists after node content is removed.
+        if (stagedPlayer != null)
+            stagedPlayer.position = playerPositionBeforeEventBattle;
+        stagedPlayer = null;
     }
 
     private void UpdateUI()

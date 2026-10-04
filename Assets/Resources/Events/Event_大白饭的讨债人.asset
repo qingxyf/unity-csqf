@@ -40,7 +40,7 @@ MonoBehaviour:
     unlockEventId: ""
     surrenderAllGold: 1
   - buttonText: "进入一场艰难的战斗"
-    resultDescription: "蓝汐举起料理铲：既然不肯赔钱，就用战斗来偿还吧！"
+    resultDescription: "蓝色大肥鱼举起料理铲：既然不肯赔钱，就用战斗来偿还吧！"
     healthChange: 0
     maxHealthChange: 0
     manaChange: 0
@@ -62,7 +62,7 @@ MonoBehaviour:
     surrenderAllGold: 0
     combatEncounter:
       enemyResourcePath: Enemies/RiceKeeper
-      enemyName: "蓝汐·米饭守护者"
+      enemyName: "蓝色大肥鱼"
       maxHealth: 240
       attackDamage: 24
       initialShield: 20

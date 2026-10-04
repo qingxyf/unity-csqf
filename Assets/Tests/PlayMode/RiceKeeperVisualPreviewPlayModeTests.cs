@@ -49,6 +49,12 @@ public class RiceKeeperVisualPreviewPlayModeTests
         Assert.That(preview.CurrentStep, Is.EqualTo(RiceKeeperVisualPreview.PreviewStep.WildRiceCamp));
         Assert.That(DeckManager.Instance.backpack.Count, Is.GreaterThanOrEqualTo(10));
 
+        Vector3 authoredPlayerPosition = new Vector3(-0.66f, -2.13f, 0f);
+        PlayerStats.Instance.transform.position = authoredPlayerPosition;
+        SpriteRenderer playerBody = PlayerStats.Instance.gameObject.AddComponent<SpriteRenderer>();
+        playerBody.sprite = Resources.Load<GameObject>("Enemies/RiceKeeper")
+            .GetComponent<RoguelikeEnemyPresentation>().idleSprite;
+
         Choices(preview.CurrentEventManager)[1].onClick.Invoke();
         Assert.That(EventPool.IsUnlocked("rice-owner-reckoning"), Is.True);
         preview.CurrentEventManager.continueButton.onClick.Invoke();
@@ -65,10 +71,12 @@ public class RiceKeeperVisualPreviewPlayModeTests
         Assert.That(DeckManager.Instance.hand.Count, Is.GreaterThan(0));
         Enemy challenger = combat.GetComponentInChildren<Enemy>();
         Assert.That(challenger, Is.Not.Null);
-        Assert.That(challenger.enemyName, Is.EqualTo("蓝汐·米饭守护者"));
+        Assert.That(challenger.enemyName, Is.EqualTo("蓝色大肥鱼"));
         Assert.That(challenger.maxHealth, Is.EqualTo(240));
         Assert.That(challenger.baseAttack, Is.EqualTo(24));
         Assert.That(challenger.currentShield, Is.EqualTo(20));
+        Assert.That(challenger.transform.position.x, Is.GreaterThan(PlayerStats.Instance.transform.position.x));
+        Assert.That(PlayerStats.Instance.transform.position.y, Is.GreaterThan(authoredPlayerPosition.y));
 
         int playerHealth = PlayerStats.Instance.currentHealth;
         int enemyShield = challenger.currentShield;
@@ -80,6 +88,9 @@ public class RiceKeeperVisualPreviewPlayModeTests
         RoguelikeEnemyPresentation presentation = challenger.GetComponent<RoguelikeEnemyPresentation>();
         Assert.That(presentation, Is.Not.Null);
         Assert.That(presentation.CurrentState, Is.EqualTo(RoguelikeEnemyPresentation.MotionState.Attack));
+
+        combat.gameObject.SetActive(false);
+        Assert.That(PlayerStats.Instance.transform.position, Is.EqualTo(authoredPlayerPosition));
     }
 
     private IEnumerator WaitForEvent(string eventId)

@@ -45,7 +45,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0ad014eb3e86c214fb0c87eca0562d87, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  enemyName: 蓝汐·米饭守护者
+  enemyName: 蓝色大肥鱼
   maxHealth: 100
   currentHealth: 0
   currentShield: 0
