@@ -455,10 +455,9 @@ public class CombatController : NodeContentController
 
     private Vector3 GetEnemyPosition(int index, int count)
     {
-        // The middle of the screen is reserved for readable hand-card previews.
-        // Keep an event challenger opposite the authored player, above the hand.
+        // Flank the hand cards while keeping both characters on the authored floor.
         if (EventEncounter != null)
-            return new Vector3(4.2f, 0.85f, 0f);
+            return new Vector3(6f, stagedPlayer != null ? stagedPlayer.position.y : -2.13f, 0f);
 
         float spacing = 3.2f;
         float startX = -((count - 1) * spacing) * 0.5f;
@@ -475,7 +474,7 @@ public class CombatController : NodeContentController
 
         stagedPlayer = PlayerStats.Instance.transform;
         playerPositionBeforeEventBattle = stagedPlayer.position;
-        stagedPlayer.position = new Vector3(-4.1f, 1.05f, stagedPlayer.position.z);
+        stagedPlayer.position = new Vector3(-6f, stagedPlayer.position.y, stagedPlayer.position.z);
     }
 
     private void OnDisable()
