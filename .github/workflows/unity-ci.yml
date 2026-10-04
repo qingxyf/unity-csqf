@@ -75,7 +75,7 @@ jobs:
           testMode: all
           # Pin game-ci CLI resolution so test startup is not coupled to the
           # GitHub releases API resolving a moving "latest" version.
-          cliVersion: 0.1.72
+          cliVersion: v0.1.72
           artifactsPath: artifacts/unity-tests
           customParameters: -nographics
       - name: Upload test artifacts
