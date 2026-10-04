@@ -44,6 +44,21 @@ public class RoguelikeEnemyContentTests
     }
 
     [Test]
+    public void RiceKeeperEventChallengerHasBothImportedPosesAtCombatScale()
+    {
+        GameObject prefab = Resources.Load<GameObject>("Enemies/RiceKeeper");
+        Assert.That(prefab, Is.Not.Null);
+        Assert.That(prefab.GetComponent<Enemy>(), Is.Not.Null);
+        Assert.That(prefab.GetComponent<Collider2D>(), Is.Not.Null);
+        RoguelikeEnemyPresentation presentation = prefab.GetComponent<RoguelikeEnemyPresentation>();
+        Assert.That(presentation.idleSprite, Is.Not.Null);
+        Assert.That(presentation.attackSprite, Is.Not.Null);
+        Assert.That(presentation.body.sprite, Is.SameAs(presentation.idleSprite));
+        Assert.That(presentation.attackSprite.bounds.size.y / presentation.idleSprite.bounds.size.y,
+            Is.InRange(0.85f, 1.05f), "The wider attack source must not shrink the character during its swing.");
+    }
+
+    [Test]
     public void DeadEnemyCannotBeRediscoveredByManagerOrActAgain()
     {
         GameObject enemyObject = new GameObject("Dead enemy awaiting visual cleanup");

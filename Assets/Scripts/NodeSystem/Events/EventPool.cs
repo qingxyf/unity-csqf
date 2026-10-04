@@ -2,33 +2,35 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-/// <summary>Run-scoped event deck. Every eligible event is drawn once before reshuffling.</summary>
+/// <summary>Run-scoped event pool. An event can be encountered only once per run.</summary>
 public static class EventPool
 {
-    private static readonly List<EventData> drawPile = new List<EventData>();
     private static readonly List<EventData> runtimeFallbackEvents = new List<EventData>();
-    private static string activeSourceKey;
+    private static readonly HashSet<string> visitedEventKeys = new HashSet<string>();
+    private static readonly HashSet<string> unlockedEventIds = new HashSet<string>();
 
     public static EventData Draw(IList<EventData> source)
     {
-        List<EventData> eligible = source == null ? new List<EventData>() : source.Where(evt => evt != null).Distinct().ToList();
+        List<EventData> eligible = source == null
+            ? new List<EventData>()
+            : source.Where(IsEligibleAndUnvisited).ToList();
         if (eligible.Count == 0)
             return null;
 
-        string sourceKey = string.Join("|", eligible
-            .Select(evt => evt.GetInstanceID().ToString())
-            .OrderBy(id => id));
-        if (sourceKey != activeSourceKey || drawPile.Count == 0)
-        {
-            drawPile.Clear();
-            drawPile.AddRange(eligible);
-            activeSourceKey = sourceKey;
-        }
-
-        int index = Random.Range(0, drawPile.Count);
-        EventData result = drawPile[index];
-        drawPile.RemoveAt(index);
+        EventData result = eligible[Random.Range(0, eligible.Count)];
+        visitedEventKeys.Add(GetEventKey(result));
         return result;
+    }
+
+    public static void UnlockEvent(string eventId)
+    {
+        if (!string.IsNullOrWhiteSpace(eventId))
+            unlockedEventIds.Add(eventId.Trim());
+    }
+
+    public static bool IsUnlocked(string eventId)
+    {
+        return !string.IsNullOrWhiteSpace(eventId) && unlockedEventIds.Contains(eventId.Trim());
     }
 
     public static void RegisterRuntimeFallback(IEnumerable<EventData> events)
@@ -60,9 +62,26 @@ public static class EventPool
 
     public static void ResetForNewRun()
     {
-        drawPile.Clear();
-        activeSourceKey = null;
+        visitedEventKeys.Clear();
+        unlockedEventIds.Clear();
         DisposeRuntimeFallback();
+    }
+
+    private static bool IsEligibleAndUnvisited(EventData evt)
+    {
+        if (evt == null || visitedEventKeys.Contains(GetEventKey(evt)))
+            return false;
+
+        return !evt.requiresUnlock || IsUnlocked(evt.eventId);
+    }
+
+    private static string GetEventKey(EventData evt)
+    {
+        if (!string.IsNullOrWhiteSpace(evt.eventId))
+            return "id:" + evt.eventId.Trim();
+        if (!string.IsNullOrWhiteSpace(evt.eventName))
+            return "name:" + evt.eventName.Trim();
+        return "instance:" + evt.GetInstanceID();
     }
 
     private static void DisposeRuntimeFallback()

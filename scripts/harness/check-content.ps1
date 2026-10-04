@@ -29,7 +29,7 @@ function Check-Pool([string]$Folder, [string]$Script, [int]$Minimum) {
 }
 
 $cards = @(Check-Pool 'Assets/Resources/Cards' 'Assets/Scripts/CardSystem/CardData.cs' 61)
-$null = Check-Pool 'Assets/Resources/Events' 'Assets/Scripts/NodeSystem/Events/EventData.cs' 18
+$null = Check-Pool 'Assets/Resources/Events' 'Assets/Scripts/NodeSystem/Events/EventData.cs' 20
 $null = Check-Pool 'Assets/Resources/Collectibles' 'Assets/Scripts/Collectibles/CollectibleData.cs' 15
 foreach ($card in $cards) {
     $cardPath = "Assets/Resources/Cards/$($card.Name)"
@@ -59,4 +59,16 @@ foreach ($pair in @(@('BattleContent', 'DuskScavenger'), @('EliteBattleContent',
     if ($encounter -notmatch "enemyPrefab: \{fileID: 100000, guid: $prefabGuid, type: 3\}" -or
         $encounter -notmatch 'cardsPerTurn: 2') { throw "Encounter content binding failed: $($pair[0])" }
 }
-Write-Host "Content check passed: card prefabs, event/collectible MonoScripts and original enemy poses are bound."
+$riceEnemy = Read-Asset 'Assets/Resources/Enemies/RiceKeeper.prefab'
+foreach ($pose in @('Idle', 'Attack')) {
+    $poseGuid = Read-Guid "Assets/Art/Roguelike/Enemies/RiceKeeper/$pose.png"
+    if ($riceEnemy -notmatch "guid: $poseGuid, type: 3") { throw "RiceKeeper pose not bound: $pose" }
+}
+foreach ($eventArt in @(@('野生营地', 'WildCamp'), @('大白饭的讨债人', 'RiceOwnerReckoning'))) {
+    $eventAsset = Read-Asset "Assets/Resources/Events/Event_$($eventArt[0]).asset"
+    $artGuid = Read-Guid "Assets/Art/Roguelike/Events/$($eventArt[1]).png"
+    if ($eventAsset -notmatch "illustration: \{fileID: 21300000, guid: $artGuid, type: 3\}") {
+        throw "Event illustration not bound: $($eventArt[0])"
+    }
+}
+Write-Host "Content check passed: card prefabs, event/collectible MonoScripts, event illustrations and original enemy poses are bound."

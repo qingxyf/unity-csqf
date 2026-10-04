@@ -1,0 +1,62 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7e979fbed34413468065a17cf115b77, type: 3}
+  m_Name: "野生营地"
+  m_EditorClassIdentifier:
+  eventId: wild-rice-camp
+  requiresUnlock: 0
+  eventName: "野生营地"
+  description: "残破的帐篷间，一口电饭锅刚跳到保温。锅盖下的白米饭还冒着热气，旁边的碗筷摆得整整齐齐。\n营地主人似乎只是暂时离开了。"
+  illustration: {fileID: 21300000, guid: 7f43b74db94945b5ace1f05501f325cd, type: 3}
+  choices:
+  - buttonText: "吃一点大米饭"
+    resultDescription: "你盛了一小碗，给锅里留下大半。热腾腾的白饭让你恢复了一些体力。"
+    healthChange: 15
+    maxHealthChange: 0
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+    grantCollectible: 0
+    unlockEventId: ""
+    surrenderAllGold: 0
+  - buttonText: "吃光大米饭"
+    resultDescription: "你把锅底最后一粒米也吃掉了，精神焕发。蓝色鲸鱼图案的碗却提醒着你：这顿饭有主人。\n\n事件进入新的走向：『大白饭的讨债人』已加入本局事件池。"
+    healthChange: 30
+    maxHealthChange: 8
+    manaChange: 0
+    shieldGain: 0
+    cardsToDraw: 0
+    cardsToRemove: 0
+    healToFull: 0
+    upgradeRandomCard: 0
+    isGamble: 0
+    gambleSuccessRate: 0
+    gambleFailText: ""
+    gambleFailHealthChange: 0
+    rewardElement: 5
+    useRewardElement: 0
+    rewardMaxCost: 99
+    previewCardChoices: 0
+    grantCollectible: 0
+    unlockEventId: rice-owner-reckoning
+    surrenderAllGold: 0
