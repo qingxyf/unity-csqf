@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: old_wallet
   collectibleId: old_wallet
   collectibleName: 旧钱包
-  description: 商店价格 -15%。
+  description: 商店价格 -20%。
   effectType: 5
-  amount: 15
+  amount: 20
   element: 5
   damageType: 0
   shopPrice: 100

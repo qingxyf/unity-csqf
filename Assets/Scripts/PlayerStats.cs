@@ -98,6 +98,7 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     private bool initialized;
     private bool isInitialCombatTurn;
+    private int combatTurn;
 
     private void Awake()
     {
@@ -162,6 +163,8 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     public void OnBattleEnd()
     {
+        combatTurn = 0;
+        isInitialCombatTurn = false;
         currentShield = 0;
         damageSourcesThisTurn.Clear();
         hasFlameShield = false;
@@ -184,6 +187,7 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     public void BeginCombat()
     {
+        combatTurn = 0;
         currentMana = Mathf.Clamp(initialMana, 0, maxMana);
         AddShield(CollectibleManager.GetStartShield());
         isInitialCombatTurn = true;
@@ -191,13 +195,15 @@ public class PlayerStats : MonoBehaviour, IDamageable
 
     public void StartTurn()
     {
+        combatTurn++;
         if (isInitialCombatTurn)
         {
             isInitialCombatTurn = false;
         }
         else
         {
-            currentMana = Mathf.Min(maxMana, currentMana + manaRegenPerTurn);
+            int regeneration = manaRegenPerTurn + (combatTurn >= 3 ? 1 : 0) + (combatTurn >= 5 ? 1 : 0);
+            RestoreMana(regeneration);
         }
 
         damageSourcesThisTurn.Clear();
@@ -216,6 +222,8 @@ public class PlayerStats : MonoBehaviour, IDamageable
         }
 
         lostHealthThisTurn = false;
+
+        CollectibleManager.ApplyBattleTurnEffects(this, combatTurn);
 
         // Process status effects at turn start
         foreach (var effect in new List<StatusEffect>(activeEffects))
@@ -407,6 +415,8 @@ public class PlayerStats : MonoBehaviour, IDamageable
             flatDamageReductionNextHit = 0;
         }
 
+        damage = CollectibleManager.ReduceIncomingDamage(damage);
+
         if (currentShield > 0)
         {
             if (currentShield >= damage)
@@ -481,7 +491,10 @@ public enum CollectibleEffectType
     ElementDamageBonus,
     FirstElementCardCostReduction,
     StartShield,
-    ShopDiscountPercent
+    ShopDiscountPercent,
+    EverySecondTurnShield,
+    EarlyBattleRecovery,
+    ChanceDamageReduction
 }
 
 public static class CollectibleManager
@@ -489,6 +502,7 @@ public static class CollectibleManager
     private static readonly List<CollectibleData> ownedCollectibles = new List<CollectibleData>();
     private static readonly HashSet<CardElement> discountedElementsThisTurn = new HashSet<CardElement>();
     private static readonly HashSet<CollectibleData> runtimeCollectibles = new HashSet<CollectibleData>();
+    public static string PendingShopCollectibleId { get; private set; }
 
     public static IReadOnlyList<CollectibleData> OwnedCollectibles => ownedCollectibles;
 
@@ -496,6 +510,7 @@ public static class CollectibleManager
     {
         ownedCollectibles.Clear();
         discountedElementsThisTurn.Clear();
+        PendingShopCollectibleId = null;
     }
 
     /// <summary>
@@ -538,6 +553,72 @@ public static class CollectibleManager
     public static void OnPlayerTurnStart()
     {
         discountedElementsThisTurn.Clear();
+    }
+
+    public static void ApplyBattleTurnEffects(PlayerStats player, int turn)
+    {
+        if (player == null || turn < 1) return;
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (collectible == null) continue;
+            if (turn == 2)
+                player.RestoreMana(collectible.secondTurnManaBonus);
+            if (collectible.effectType == CollectibleEffectType.EverySecondTurnShield && turn % 2 == 0)
+                player.AddShield(collectible.amount);
+            if (collectible.effectType == CollectibleEffectType.EarlyBattleRecovery && turn <= collectible.durationTurns)
+            {
+                player.Heal(collectible.amount);
+                player.RestoreMana(collectible.turnManaBonus);
+            }
+        }
+    }
+
+    public static int ReduceIncomingDamage(int damage)
+    {
+        damage = Mathf.Max(0, damage);
+        foreach (CollectibleData collectible in ownedCollectibles)
+        {
+            if (damage == 0) break;
+            if (collectible == null || collectible.effectType != CollectibleEffectType.ChanceDamageReduction) continue;
+            if (Random.value < collectible.procChance)
+                damage = Mathf.Max(0, damage - collectible.amount);
+        }
+        return damage;
+    }
+
+    public static CollectibleData GrantBattleCollectible(bool isElite, EventCombatReward eventReward)
+    {
+        CollectibleData reward;
+        if (eventReward == EventCombatReward.RiceKeepsakes)
+        {
+            string id = Random.Range(0, 2) == 0 ? "special_metal_basin" : "big_rice";
+            if (IsOwned(id)) id = id == "big_rice" ? "special_metal_basin" : "big_rice";
+            if (IsOwned(id)) return null;
+            reward = CreateCollectible(id);
+            if (!AddCollectible(reward)) return null;
+            string otherId = id == "big_rice" ? "special_metal_basin" : "big_rice";
+            PendingShopCollectibleId = IsOwned(otherId) ? null : otherId;
+            return reward;
+        }
+        // Integer rolls make the normal drop chance exactly 30 out of 100.
+        if (!isElite && Random.Range(0, 100) >= 30) return null;
+        reward = CreateRandomCollectible();
+        return AddCollectible(reward) ? reward : null;
+    }
+
+    public static CollectibleData ClaimNextShopCollectible()
+    {
+        string id = PendingShopCollectibleId;
+        PendingShopCollectibleId = null;
+        return string.IsNullOrEmpty(id) || IsOwned(id) ? null : CreateCollectible(id);
+    }
+
+    private static CollectibleData CreateCollectible(string id)
+    {
+        CollectibleData asset = Resources.Load<CollectibleData>("Collectibles/" + id);
+        CollectibleData collectible = asset != null ? Object.Instantiate(asset) : CollectibleCatalog.CreateFallback(id);
+        CollectibleCatalog.EnsureIcon(collectible);
+        return RegisterRuntimeCollectible(collectible);
     }
 
     public static int GetEffectiveCardCost(CardData card)
@@ -634,8 +715,9 @@ public static class CollectibleManager
     {
         List<CollectibleData> authored = Resources.LoadAll<CollectibleData>("Collectibles").ToList();
         List<CollectibleData> candidates = authored.Count > 0
-            ? authored.FindAll(data => data != null && !IsOwned(data.collectibleId))
-            : CollectibleCatalog.Ids.Where(id => !IsOwned(id)).Select(CollectibleCatalog.CreateFallback).ToList();
+            ? authored.FindAll(data => data != null && !data.eventExclusive && !IsOwned(data.collectibleId))
+            : CollectibleCatalog.Ids.Where(id => !IsOwned(id)).Select(CollectibleCatalog.CreateFallback)
+                .Select(RegisterRuntimeCollectible).Where(data => data != null && !data.eventExclusive).ToList();
         if (candidates.Count == 0) return null;
 
         CollectibleData selected = candidates[Random.Range(0, candidates.Count)];

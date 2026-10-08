@@ -66,3 +66,4 @@ MonoBehaviour:
       maxHealth: 240
       attackDamage: 24
       initialShield: 20
+      reward: 1

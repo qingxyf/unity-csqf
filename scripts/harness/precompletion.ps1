@@ -64,6 +64,27 @@ function Invoke-Unity([string[]]$Arguments) {
     }
 }
 
+function Read-UnityTestSummary([string]$ResultsPath) {
+    if (-not (Test-Path -LiteralPath $ResultsPath)) { return $null }
+    try {
+        $text = Get-Content -LiteralPath $ResultsPath -Raw -ErrorAction Stop
+        if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+        [xml]$document = $text
+        $root = $document.DocumentElement
+        if ($root.Name -ne 'test-run' -or -not $root.HasAttribute('total') -or
+            -not $root.HasAttribute('failed') -or -not $root.HasAttribute('result')) { return $null }
+        return [pscustomobject]@{
+            Result = $root.GetAttribute('result')
+            Total = [int]$root.GetAttribute('total')
+            Failed = [int]$root.GetAttribute('failed')
+        }
+    }
+    catch {
+        # The file can exist while Unity is still writing its XML document.
+        return $null
+    }
+}
+
 function Invoke-UnityUntilResults([string[]]$Arguments, [string]$ResultsPath) {
     $argumentString = ($Arguments | ForEach-Object {
         $argument = [string]$_
@@ -77,19 +98,22 @@ function Invoke-UnityUntilResults([string[]]$Arguments, [string]$ResultsPath) {
 
     $process = Start-Process -FilePath $UnityPath -ArgumentList $argumentString -WindowStyle Hidden -PassThru
     $deadline = (Get-Date).AddMinutes(5)
-    while (-not (Test-Path -LiteralPath $ResultsPath) -and (Get-Date) -lt $deadline) {
+    $summary = $null
+    while ((Get-Date) -lt $deadline) {
+        $summary = Read-UnityTestSummary $ResultsPath
+        if ($null -ne $summary) { break }
         Start-Sleep -Seconds 2
         $process.Refresh()
-        if ($process.HasExited -and -not (Test-Path -LiteralPath $ResultsPath)) {
-            throw "Unity exited with code $($process.ExitCode) before producing test results."
+        if ($process.HasExited -and $null -eq (Read-UnityTestSummary $ResultsPath)) {
+            throw "Unity exited with code $($process.ExitCode) before producing complete test results."
         }
     }
 
-    if (-not (Test-Path -LiteralPath $ResultsPath)) {
+    if ($null -eq $summary) {
         if (-not $process.HasExited) {
             Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
         }
-        throw "Unity did not produce test results within 5 minutes."
+        throw "Unity did not produce complete test results within 5 minutes."
     }
 
     $process.Refresh()
@@ -118,11 +142,12 @@ foreach ($testPlatform in @("editmode", "playmode")) {
     if ($compileErrors) {
         throw "Unity typecheck reported compiler errors. See $testLog"
     }
-    $testSummary = Get-Content -LiteralPath $testResults -Raw
-    if ($testSummary -notmatch '<test-run\b[^>]*result="Passed"' -or
-        $testSummary -match '<test-run\b[^>]*failed="[1-9][0-9]*"') {
+    $testSummary = Read-UnityTestSummary $testResults
+    if ($null -eq $testSummary -or $testSummary.Total -lt 1 -or
+        $testSummary.Result -ne 'Passed' -or $testSummary.Failed -ne 0) {
         throw "$testPlatform tests did not pass. See $testResults and $testLog"
     }
+    Write-Host "[precompletion] $testPlatform passed: $($testSummary.Total) tests, 0 failures" -ForegroundColor Green
 }
 
 if ($RunBuild) {

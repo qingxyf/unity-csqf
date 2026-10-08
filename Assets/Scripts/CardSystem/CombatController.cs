@@ -286,14 +286,10 @@ public class CombatController : NodeContentController
         if (PlayerStats.Instance != null)
             PlayerStats.Instance.GainGold(goldReward);
 
-        CollectibleData collectibleReward = null;
-        if (isEliteBattle)
-        {
-            collectibleReward = CollectibleManager.CreateRandomCollectible();
-            CollectibleManager.AddCollectible(collectibleReward);
-            if (collectibleReward == null && PlayerStats.Instance != null)
-                PlayerStats.Instance.GainGold(25);
-        }
+        CollectibleData collectibleReward = CollectibleManager.GrantBattleCollectible(
+            isEliteBattle, EventEncounter != null ? EventEncounter.reward : EventCombatReward.Standard);
+        if (isEliteBattle && collectibleReward == null && PlayerStats.Instance != null)
+            PlayerStats.Instance.GainGold(25);
 
         DeckManager.Instance.EndCombat();
 
@@ -309,6 +305,8 @@ public class CombatController : NodeContentController
         reward.title = isEliteBattle
             ? $"精英奖励  +{goldReward} 金币  +{(collectibleReward != null ? collectibleReward.collectibleName : "25 金币（藏品已集齐）") }"
             : $"战斗奖励  +{goldReward} 金币";
+        if (!isEliteBattle && collectibleReward != null)
+            reward.title += $"  +{collectibleReward.collectibleName}";
         reward.choiceCount = isEliteBattle ? 4 : 3;
         reward.maxPicks = 2;
         reward.maxCost = isEliteBattle ? 99 : 3;

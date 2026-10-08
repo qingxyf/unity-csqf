@@ -10,12 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6c774b2443a244ef9e8898e3effc1787, type: 3}
-  m_Name: warding_coin
-  collectibleId: warding_coin
-  collectibleName: 守望硬币
-  description: 每场战斗第 2、4、6…回合获得 5 点护盾。
-  effectType: 6
-  amount: 5
+  m_Name: big_rice
+  collectibleId: big_rice
+  collectibleName: 大米饭
+  description: 每场战斗的前三回合，每回合恢复 10 点生命和 1 点能量。
+  effectType: 7
+  amount: 10
   element: 5
   damageType: 0
-  shopPrice: 70
+  shopPrice: 180
+  turnManaBonus: 1
+  durationTurns: 3
+  eventExclusive: 1

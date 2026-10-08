@@ -61,7 +61,7 @@ public class RoguelikeV02RulesTests
     }
 
     [Test]
-    public void PlayerRegeneratesTwoEnergyPerTurnUpToCapAfterInitialCombatTurn()
+    public void PlayerRegenerationScalesAtTurnsThreeAndFiveAndResetsEachBattle()
     {
         PlayerStats stats = CreatePlayerStats();
 
@@ -69,14 +69,22 @@ public class RoguelikeV02RulesTests
         stats.StartTurn();
         Assert.That(stats.currentMana, Is.EqualTo(6));
 
-        stats.StartTurn();
-        Assert.That(stats.currentMana, Is.EqualTo(8));
-
+        foreach (int expected in new[] { 2, 3, 3, 4, 4 })
+        {
+            stats.currentMana = 0;
+            stats.StartTurn();
+            Assert.That(stats.currentMana, Is.EqualTo(expected));
+        }
+        stats.currentMana = 9;
         stats.StartTurn();
         Assert.That(stats.currentMana, Is.EqualTo(10));
-
+        stats.OnBattleEnd();
+        stats.BeginCombat();
         stats.StartTurn();
-        Assert.That(stats.currentMana, Is.EqualTo(10));
+        Assert.That(stats.currentMana, Is.EqualTo(6));
+        stats.currentMana = 0;
+        stats.StartTurn();
+        Assert.That(stats.currentMana, Is.EqualTo(2));
     }
 
     [Test]
@@ -308,25 +316,44 @@ public class RoguelikeV02RulesTests
     }
 
     [Test]
-    public void StartShieldCollectibleAddsShieldWhenCombatBegins()
+    public void ShieldCollectiblesGrantShieldOnlyOnEvenTurnsOfEachBattle()
     {
         PlayerStats stats = CreatePlayerStats();
-        CollectibleData collectible = ScriptableObject.CreateInstance<CollectibleData>();
-        collectible.collectibleId = "test_start_shield";
-        collectible.collectibleName = "Aegis Shard";
-        collectible.effectType = CollectibleEffectType.StartShield;
-        collectible.amount = 8;
-
-        try
+        CollectibleManager.AddCollectible(Resources.Load<CollectibleData>("Collectibles/aegis_shard"));
+        CollectibleManager.AddCollectible(Resources.Load<CollectibleData>("Collectibles/warding_coin"));
+        for (int battle = 0; battle < 2; battle++)
         {
-            CollectibleManager.AddCollectible(collectible);
             stats.BeginCombat();
-
-            Assert.That(stats.currentShield, Is.EqualTo(8));
+            Assert.That(stats.currentShield, Is.Zero);
+            foreach (int expected in new[] { 0, 13, 0, 13, 0, 13 })
+            {
+                stats.currentShield = 0;
+                stats.StartTurn();
+                Assert.That(stats.currentShield, Is.EqualTo(expected));
+            }
+            stats.OnBattleEnd();
         }
-        finally
+    }
+
+    [TestCase("energy_core", 11, 3)]
+    [TestCase("mana_prism", 12, 4)]
+    public void EnergyCollectiblesKeepTheirCapAndAddEnergyOnTurnTwo(string id, int cap, int secondTurnEnergy)
+    {
+        PlayerStats stats = CreatePlayerStats();
+        CollectibleManager.AddCollectible(Resources.Load<CollectibleData>("Collectibles/" + id));
+        Assert.That(stats.maxMana, Is.EqualTo(cap));
+        for (int battle = 0; battle < 2; battle++)
         {
-            Object.DestroyImmediate(collectible);
+            stats.BeginCombat();
+            stats.StartTurn();
+            Assert.That(stats.currentMana, Is.EqualTo(6));
+            stats.currentMana = 0;
+            stats.StartTurn();
+            Assert.That(stats.currentMana, Is.EqualTo(secondTurnEnergy));
+            stats.currentMana = 0;
+            stats.StartTurn();
+            Assert.That(stats.currentMana, Is.EqualTo(3));
+            stats.OnBattleEnd();
         }
     }
 

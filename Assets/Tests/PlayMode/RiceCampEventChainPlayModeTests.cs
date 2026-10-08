@@ -10,10 +10,12 @@ public class RiceCampEventChainPlayModeTests
     private GameObject gameObject;
     private GameManager game;
     private readonly List<GameObject> nodes = new List<GameObject>();
+    private Random.State randomState;
 
     [UnitySetUp]
     public IEnumerator SetUp()
     {
+        randomState = Random.state;
         EventPool.ResetForNewRun();
         CollectibleManager.ResetForNewRun();
         gameObject = new GameObject("Rice event test game");
@@ -42,6 +44,7 @@ public class RiceCampEventChainPlayModeTests
         GameManager.Instance = null;
         EventPool.ResetForNewRun();
         CollectibleManager.ResetForNewRun();
+        Random.state = randomState;
         yield return null;
     }
 
@@ -172,11 +175,43 @@ public class RiceCampEventChainPlayModeTests
         Assert.That(reward.BoundNode, Is.SameAs(originalNode));
         Assert.That(PlayerStats.Instance.gold, Is.EqualTo(previousGold + 35));
         Assert.That(CollectibleManager.OwnedCollectibles.Count, Is.EqualTo(1));
+        string awardedId = CollectibleManager.OwnedCollectibles[0].collectibleId;
+        Assert.That(new[] { "big_rice", "special_metal_basin" }, Does.Contain(awardedId));
+        string otherId = awardedId == "big_rice" ? "special_metal_basin" : "big_rice";
+        Assert.That(CollectibleManager.PendingShopCollectibleId, Is.EqualTo(otherId));
+        combat.RequestEndPlayerTurn();
+        Assert.That(PlayerStats.Instance.gold, Is.EqualTo(previousGold + 35));
+        Assert.That(CollectibleManager.OwnedCollectibles.Count, Is.EqualTo(1));
         Assert.That(game.CurrentNodeCompleted, Is.False);
         reward.skipButton.onClick.Invoke();
         yield return null;
         Assert.That(game.CurrentNodeCompleted, Is.True);
         Assert.That(game.contentManager.HasCurrentContent, Is.False);
+
+        ShopManager shop = EnterShop();
+        yield return null;
+        string offerName = Resources.Load<CollectibleData>("Collectibles/" + otherId).collectibleName;
+        Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Null);
+        Assert.That(FindOffer(shop, offerName), Is.Not.Null);
+        shop.RefreshOffers();
+        yield return null;
+        shop.RefreshOffers();
+        yield return null;
+        Button guaranteedOffer = FindOffer(shop, offerName);
+        Assert.That(guaranteedOffer, Is.Not.Null, "The guaranteed keepsake must survive refreshes.");
+        Assert.That(shop.offerContainer.GetComponentsInChildren<Button>(), Has.Length.EqualTo(8));
+        PlayerStats.Instance.gold = 500;
+        guaranteedOffer.onClick.Invoke();
+        guaranteedOffer.onClick.Invoke();
+        Assert.That(PlayerStats.Instance.gold, Is.EqualTo(320));
+        Assert.That(CollectibleManager.OwnedCollectibles.Count, Is.EqualTo(2));
+        yield return null;
+        shop.RefreshOffers();
+        yield return null;
+        Assert.That(FindOffer(shop, offerName), Is.Null, "A purchased exclusive item must not respawn.");
+        shop.leaveButton.onClick.Invoke();
+        yield return null;
+        Assert.That(game.CurrentNodeCompleted, Is.True);
     }
 
     [UnityTest]
@@ -212,6 +247,8 @@ public class RiceCampEventChainPlayModeTests
         Assert.That(game.RunController.CurrentResult, Is.EqualTo(RoguelikeRunResult.Defeat));
         Assert.That(game.CurrentNodeCompleted, Is.False);
         Assert.That(game.contentManager.HasCurrentContent, Is.False);
+        Assert.That(CollectibleManager.OwnedCollectibles, Is.Empty);
+        Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Null);
         Assert.That(game.RunController.StartNewRun(), Is.True);
         yield return null;
         Assert.That(EventPool.IsUnlocked("rice-owner-reckoning"), Is.False);
@@ -233,6 +270,95 @@ public class RiceCampEventChainPlayModeTests
         manager.autoLoadResources = false;
         manager.eventPool = new List<EventData> { LoadEvent(resourceName) };
         return manager;
+    }
+
+    [UnityTest]
+    public IEnumerator GuaranteedKeepsakeIsForNextShopOnlyAndRestartClearsReservation()
+    {
+        CollectibleManager.GrantBattleCollectible(true, EventCombatReward.RiceKeepsakes);
+        string reservedId = CollectibleManager.PendingShopCollectibleId;
+        string name = Resources.Load<CollectibleData>("Collectibles/" + reservedId).collectibleName;
+        ShopManager first = EnterShop();
+        yield return null;
+        Assert.That(FindOffer(first, name), Is.Not.Null);
+        first.leaveButton.onClick.Invoke();
+        yield return null;
+        ShopManager second = EnterShop();
+        yield return null;
+        Assert.That(FindOffer(second, name), Is.Null);
+        second.leaveButton.onClick.Invoke();
+        yield return null;
+        CollectibleManager.ResetForNewRun();
+        CollectibleManager.GrantBattleCollectible(true, EventCombatReward.RiceKeepsakes);
+        Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Not.Empty);
+        Assert.That(game.RunController.StartNewRun(), Is.True);
+        yield return null;
+        Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Null);
+        Assert.That(CollectibleManager.OwnedCollectibles, Is.Empty);
+    }
+
+    [UnityTest]
+    public IEnumerator NormalCombatDropAndEliteGuaranteedRewardAreGrantedOnlyOnce()
+    {
+        foreach (NodeType type in new[] { NodeType.Battle, NodeType.EliteBattle })
+        {
+            CollectibleManager.ResetForNewRun();
+            EnterNode(type);
+            yield return null;
+            CombatController combat = Object.FindObjectOfType<CombatController>();
+            Assert.That(combat, Is.Not.Null);
+            foreach (Enemy enemy in combat.GetComponentsInChildren<Enemy>()) enemy.TakeDamage(9999);
+            // Seed the drop immediately before resolving victory, after combat's RNG draws.
+            Random.InitState(0);
+            Random.State dropState = Random.state;
+            for (int seed = 0; Random.Range(0, 100) != 29; seed++)
+            {
+                Assert.That(seed, Is.LessThan(10000));
+                Random.InitState(seed + 1);
+                dropState = Random.state;
+            }
+            Random.state = dropState;
+            int gold = PlayerStats.Instance.gold;
+            combat.RequestEndPlayerTurn();
+            combat.RequestEndPlayerTurn();
+            yield return null;
+            Assert.That(CollectibleManager.OwnedCollectibles.Count, Is.EqualTo(1));
+            Assert.That(CollectibleManager.OwnedCollectibles[0].eventExclusive, Is.False);
+            Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Null);
+            Assert.That(PlayerStats.Instance.gold, Is.EqualTo(gold + (type == NodeType.Battle ? 15 : 35)));
+            RewardChoiceUI reward = combat.GetComponentInChildren<RewardChoiceUI>();
+            Assert.That(reward.title, Does.Contain(CollectibleManager.OwnedCollectibles[0].collectibleName));
+            reward.skipButton.onClick.Invoke();
+            yield return null;
+        }
+    }
+
+    private ShopManager EnterShop()
+    {
+        EnterNode(NodeType.Shop);
+        ShopManager shop = Object.FindObjectOfType<ShopManager>();
+        Assert.That(shop, Is.Not.Null);
+        return shop;
+    }
+
+    private void EnterNode(NodeType type)
+    {
+        GameObject nodeObject = new GameObject("Collectible test " + type);
+        nodes.Add(nodeObject);
+        Node node = nodeObject.AddComponent<Node>();
+        node.type = type;
+        node.isActive = true;
+        game.SelectNode(node);
+    }
+
+    private static Button FindOffer(ShopManager shop, string name)
+    {
+        foreach (Button button in shop.offerContainer.GetComponentsInChildren<Button>())
+        {
+            TMPro.TextMeshProUGUI text = button.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (text != null && text.text.StartsWith(name + " ")) return button;
+        }
+        return null;
     }
 
     private static EventData LoadEvent(string resourceName)
