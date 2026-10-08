@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: mana_prism
   collectibleId: mana_prism
   collectibleName: 法力棱镜
-  description: 能量上限 +2，并获得 2 点当前能量。
+  description: 能量上限 +2，并获得 2 点当前能量；每场战斗第二回合额外回复 2 点能量。
   effectType: 1
   amount: 2
   element: 5
   damageType: 0
   shopPrice: 210
+  secondTurnManaBonus: 2

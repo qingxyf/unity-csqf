@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: energy_core
   collectibleId: energy_core
   collectibleName: 能量核心
-  description: 能量上限 +1，并获得 1 点当前能量。
+  description: 能量上限 +1，并获得 1 点当前能量；每场战斗第二回合额外回复 1 点能量。
   effectType: 1
   amount: 1
   element: 5
   damageType: 0
   shopPrice: 150
+  secondTurnManaBonus: 1

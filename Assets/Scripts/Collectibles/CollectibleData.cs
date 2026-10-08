@@ -13,4 +13,10 @@ public class CollectibleData : ScriptableObject
     public CardElement element = CardElement.Neutral;
     public DamageType damageType = DamageType.Physical;
     public int shopPrice = 100;
+    public int secondTurnManaBonus;
+    public int turnManaBonus;
+    public int durationTurns;
+    [Range(0f, 1f)] public float procChance;
+    [Tooltip("Only available through its event reward or guaranteed shop offer.")]
+    public bool eventExclusive;
 }

@@ -10,12 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6c774b2443a244ef9e8898e3effc1787, type: 3}
-  m_Name: warding_coin
-  collectibleId: warding_coin
-  collectibleName: 守望硬币
-  description: 每场战斗第 2、4、6…回合获得 5 点护盾。
-  effectType: 6
+  m_Name: special_metal_basin
+  collectibleId: special_metal_basin
+  collectibleName: 特殊的金属盆
+  description: 每次受到伤害时，有 30% 概率减免 5 点伤害。
+  effectType: 8
   amount: 5
   element: 5
   damageType: 0
-  shopPrice: 70
+  shopPrice: 180
+  procChance: 0.3
+  eventExclusive: 1

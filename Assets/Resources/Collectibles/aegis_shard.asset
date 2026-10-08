@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: aegis_shard
   collectibleId: aegis_shard
   collectibleName: 圣盾碎片
-  description: 每场战斗开始时获得 8 点护盾。
-  effectType: 4
+  description: 每场战斗第 2、4、6…回合获得 8 点护盾。
+  effectType: 6
   amount: 8
   element: 5
   damageType: 0

@@ -139,7 +139,7 @@ public class ContentPoolTests
     public void CollectibleResourcesImportAsDedicatedCollectibleDataAssets()
     {
         string[] guids = AssetDatabase.FindAssets("t:CollectibleData", new[] { "Assets/Resources/Collectibles" });
-        Assert.That(guids.Length, Is.EqualTo(15));
+        Assert.That(guids.Length, Is.EqualTo(17));
 
         foreach (string guid in guids)
         {
@@ -149,7 +149,7 @@ public class ContentPoolTests
             Assert.That(collectible.collectibleId, Is.Not.Empty, path);
         }
 
-        Assert.That(Resources.LoadAll<CollectibleData>("Collectibles").Length, Is.EqualTo(15));
+        Assert.That(Resources.LoadAll<CollectibleData>("Collectibles").Length, Is.EqualTo(17));
     }
 
     [Test]
@@ -196,6 +196,7 @@ public class ContentPoolTests
         Assert.That(reckoning.choices[0].StartsCombat, Is.False);
         Assert.That(reckoning.choices[1].combatEncounter.enemyResourcePath, Is.EqualTo("Enemies/RiceKeeper"));
         Assert.That(reckoning.choices[1].combatEncounter.maxHealth, Is.EqualTo(240));
+        Assert.That(reckoning.choices[1].combatEncounter.reward, Is.EqualTo(EventCombatReward.RiceKeepsakes));
     }
 
     [Test]

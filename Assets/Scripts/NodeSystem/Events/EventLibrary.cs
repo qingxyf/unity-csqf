@@ -323,7 +323,8 @@ public static class EventLibrary
             enemyName = "蓝色大肥鱼",
             maxHealth = 240,
             attackDamage = 24,
-            initialShield = 20
+            initialShield = 20,
+            reward = EventCombatReward.RiceKeepsakes
         };
 
         EventData evt = CreateEvent("大白饭的讨债人", "蓝发的鲸鱼女仆拦住了你，指着空空的电饭锅，脸颊气得鼓鼓的。\n『我的大白饭呢？！一粒都没给我留？这笔账，今天必须算清楚！』", surrender, fight);

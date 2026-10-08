@@ -21,14 +21,18 @@ public class ShopManager : NodeContentController
     public Button leaveButton;
 
     private readonly List<CardData> offers = new List<CardData>();
+    private readonly List<System.Action> refreshPriceLabels = new List<System.Action>();
     private int removeServiceUses;
     private CollectibleData collectibleOffer;
+    private CollectibleData guaranteedCollectible;
+    private bool guaranteedCollectiblePurchased;
 
     private void Start()
     {
         DeckManager.EnsureInstance();
         PlayerStats.EnsureInstance();
         EnsureUI();
+        guaranteedCollectible = CollectibleManager.ClaimNextShopCollectible();
         RefreshOffers();
     }
 
@@ -49,6 +53,9 @@ public class ShopManager : NodeContentController
         return ApplyShopDiscount(removeBaseCost + removeServiceUses * removeCostIncrease);
     }
 
+    public int GetHealServiceCost() => ApplyShopDiscount(healCost);
+    public int GetRefreshServiceCost() => ApplyShopDiscount(refreshCost);
+
     public void RefreshOffers()
     {
         if (offerContainer == null || offerButtonPrefab == null) return;
@@ -57,26 +64,27 @@ public class ShopManager : NodeContentController
             Destroy(child.gameObject);
 
         offers.Clear();
+        refreshPriceLabels.Clear();
         offers.AddRange(DeckManager.Instance.GetRewardChoices(offerCount));
 
         foreach (CardData card in offers)
             CreateCardOffer(card);
 
-        if (sellCollectibles)
+        if (sellCollectibles || guaranteedCollectible != null)
             CreateCollectibleOffer();
 
         CreateServiceButton(
-            $"随机移除卡牌  {GetRemoveServiceCost()} 金币",
+            () => $"随机移除卡牌  {GetRemoveServiceCost()} 金币",
             "从背包中随机移除一张卡牌。",
             RemoveCardService);
 
         CreateServiceButton(
-            $"恢复 {healAmount} 生命  {healCost} 金币",
+            () => $"恢复 {healAmount} 生命  {GetHealServiceCost()} 金币",
             "在下一场战斗前治疗伤势。",
             BuyHeal);
 
         CreateServiceButton(
-            $"刷新货架  {refreshCost} 金币",
+            () => $"刷新货架  {GetRefreshServiceCost()} 金币",
             "重新生成一批卡牌商品。",
             BuyRefresh);
     }
@@ -92,10 +100,14 @@ public class ShopManager : NodeContentController
         GameObject buttonObject = Instantiate(offerButtonPrefab, offerContainer);
         buttonObject.SetActive(true);
 
-        int price = GetCardPrice(card);
         TextMeshProUGUI text = buttonObject.GetComponentInChildren<TextMeshProUGUI>();
-        if (text != null)
-            text.text = $"{card.cardName}  {price} 金币  费用:{card.cost}\n<size=75%>{card.description}</size>";
+        System.Action updateLabel = () =>
+        {
+            if (text != null)
+                text.text = $"{card.cardName}  {GetCardPrice(card)} 金币  费用:{card.cost}\n<size=75%>{card.description}</size>";
+        };
+        refreshPriceLabels.Add(updateLabel);
+        updateLabel();
 
         Button button = buttonObject.GetComponent<Button>();
         if (button != null)
@@ -105,14 +117,18 @@ public class ShopManager : NodeContentController
         }
     }
 
-    private void CreateServiceButton(string label, string description, UnityEngine.Events.UnityAction action)
+    private void CreateServiceButton(System.Func<string> label, string description, UnityEngine.Events.UnityAction action)
     {
         GameObject buttonObject = Instantiate(offerButtonPrefab, offerContainer);
         buttonObject.SetActive(true);
 
         TextMeshProUGUI text = buttonObject.GetComponentInChildren<TextMeshProUGUI>();
-        if (text != null)
-            text.text = $"{label}\n<size=75%>{description}</size>";
+        System.Action updateLabel = () =>
+        {
+            if (text != null) text.text = $"{label()}\n<size=75%>{description}</size>";
+        };
+        refreshPriceLabels.Add(updateLabel);
+        updateLabel();
 
         Button button = buttonObject.GetComponent<Button>();
         if (button != null)
@@ -129,24 +145,29 @@ public class ShopManager : NodeContentController
 
     private void CreateCollectibleOffer()
     {
-        collectibleOffer = CollectibleManager.CreateRandomCollectible();
+        collectibleOffer = guaranteedCollectible != null && !guaranteedCollectiblePurchased
+            ? guaranteedCollectible : CollectibleManager.CreateRandomCollectible();
         if (collectibleOffer == null)
             return;
 
-        int price = ApplyShopDiscount(collectibleOffer.shopPrice);
         GameObject buttonObject = Instantiate(offerButtonPrefab, offerContainer);
         buttonObject.SetActive(true);
 
         TextMeshProUGUI text = buttonObject.GetComponentInChildren<TextMeshProUGUI>();
-        if (text != null)
-            text.text = $"{collectibleOffer.collectibleName}  {price} 金币\n<size=75%>{collectibleOffer.description}</size>";
+        CollectibleData selected = collectibleOffer;
+        System.Action updateLabel = () =>
+        {
+            if (text != null && selected != null)
+                text.text = $"{selected.collectibleName}  {ApplyShopDiscount(selected.shopPrice)} 金币\n<size=75%>{selected.description}</size>";
+        };
+        refreshPriceLabels.Add(updateLabel);
+        updateLabel();
 
         CollectibleUiUtility.AddIconToOffer(buttonObject, collectibleOffer);
 
         Button button = buttonObject.GetComponent<Button>();
         if (button != null)
         {
-            CollectibleData selected = collectibleOffer;
             button.onClick.AddListener(() => BuyCollectible(selected, buttonObject));
         }
     }
@@ -194,6 +215,8 @@ public class ShopManager : NodeContentController
             if (button != null) button.interactable = true;
             return;
         }
+        if (collectible == guaranteedCollectible)
+            guaranteedCollectiblePurchased = true;
         Destroy(buttonObject);
         UpdateTitle();
     }
@@ -223,7 +246,7 @@ public class ShopManager : NodeContentController
     private void BuyHeal()
     {
         if (PlayerStats.Instance == null) return;
-        if (!PlayerStats.Instance.SpendGold(healCost)) return;
+        if (!PlayerStats.Instance.SpendGold(GetHealServiceCost())) return;
 
         PlayerStats.Instance.Heal(healAmount);
         UpdateTitle();
@@ -232,7 +255,7 @@ public class ShopManager : NodeContentController
     private void BuyRefresh()
     {
         if (PlayerStats.Instance == null) return;
-        if (!PlayerStats.Instance.SpendGold(refreshCost)) return;
+        if (!PlayerStats.Instance.SpendGold(GetRefreshServiceCost())) return;
 
         RefreshOffers();
         UpdateTitle();
@@ -304,6 +327,8 @@ public class ShopManager : NodeContentController
 
     private void UpdateTitle()
     {
+        foreach (System.Action refreshLabel in refreshPriceLabels)
+            refreshLabel();
         if (titleText == null) return;
 
         int gold = PlayerStats.Instance != null ? PlayerStats.Instance.gold : 0;

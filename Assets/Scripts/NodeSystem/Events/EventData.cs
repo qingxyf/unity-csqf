@@ -66,4 +66,11 @@ public class EventCombatEncounter
     public int maxHealth;
     public int attackDamage;
     public int initialShield;
+    public EventCombatReward reward;
+}
+
+public enum EventCombatReward
+{
+    Standard,
+    RiceKeepsakes
 }
