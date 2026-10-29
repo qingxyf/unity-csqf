@@ -45,6 +45,13 @@ public class RulesDisplay : MonoBehaviour
 
     private GameObject overlay;
 
+    private void Awake()
+    {
+        // Include the new rules even when an older scene serialized the status text.
+        // Keep rulesContent as the complete displayed document for custom callers.
+        rulesContent = CombatRules + rulesContent;
+    }
+
     // The serialized panel is already inactive in the map scene.  Closing it
     // again from Start immediately after its first activation swallowed the
     // first rules-button click.
@@ -73,7 +80,7 @@ public class RulesDisplay : MonoBehaviour
             textObject.transform.SetParent(content, false);
             TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
             if (TMP_Settings.defaultFontAsset != null) text.font = TMP_Settings.defaultFontAsset;
-            text.text = CombatRules + rulesContent;
+            text.text = rulesContent;
             text.fontSize = 20f;
             text.enableWordWrapping = true;
             text.color = Color.white;
@@ -97,11 +104,11 @@ public class RulesDisplay : MonoBehaviour
     {
         if (contentText != null)
         {
-            contentText.text = CombatRules + rulesContent;
+            contentText.text = rulesContent;
         }
         else if (standardText != null)
         {
-            standardText.text = CombatRules + rulesContent;
+            standardText.text = rulesContent;
         }
     }
 }
