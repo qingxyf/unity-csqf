@@ -44,11 +44,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69b57864fbea7684db2a898acf71e16f, type: 3}
   m_Name:
   m_EditorClassIdentifier:
-  eliteEnemyCount: 1
   cardsPerTurn: 2
   enemyPrefab: {fileID: 100000, guid: f4d74bd950ac5963a7a0086031385260, type: 3}
   autoCreateManagers: 1
-  normalEnemyCount: 1
   isEliteBattle: 0
   isBossBattle: 1
   playerStatsText: {fileID: 0}
@@ -59,3 +57,4 @@ MonoBehaviour:
   completeNodeOnVictory: 1
   startCombatOnStart: 1
   enemyContainer: {fileID: 0}
+  encounterBalance: {fileID: 11400000, guid: fb271e5128eb52eea0d1960f56282235, type: 2}

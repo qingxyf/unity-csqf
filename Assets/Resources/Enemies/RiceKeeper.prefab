@@ -65,7 +65,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   body: {fileID: 212000}
   idleSprite: {fileID: 21300000, guid: ec9527fe2f97595d9f57ee46d2393a44, type: 3}
-  attackSprite: {fileID: 21300000, guid: 55bd0822662a5ba7ac7fd2736ac1387c, type: 3}
+  attackSprite: {fileID: 21300000, guid: 1097481b20bd5f33a6672b4bfa211005, type: 3}
   profile: 1
 --- !u!61 &610000
 BoxCollider2D:

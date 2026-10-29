@@ -69,14 +69,14 @@ public class MapGenerator : MonoBehaviour
             {
                 NodeType type;
 
-                if (forceCamp && i == nodeCount / 2)
+                if (forceCamp)
                     type = NodeType.Camp;
                 else if (forceShop && i == 0)
                     type = NodeType.Shop;
                 else if (forceElite && i == nodeCount - 1)
                     type = NodeType.EliteBattle;
                 else
-                    type = GetWeightedRandomType();
+                    type = GetWeightedRandomType(depth);
 
                 float xOffset = (i - (nodeCount - 1) / 2f) * horizontalSpacing;
                 // 加一点随机偏移，让地图不那么死板
@@ -188,11 +188,13 @@ public class MapGenerator : MonoBehaviour
         }
     }
 
-    private NodeType GetWeightedRandomType()
+    private NodeType GetWeightedRandomType(int depth)
     {
+        // Give the opening two floors time to establish a deck before elites enter the pool.
+        float eligibleEliteWeight = depth >= 3 ? Mathf.Max(0f, eliteBattleWeight) : 0f;
         float total = Mathf.Max(0f, battleWeight) + Mathf.Max(0f, eventWeight) +
             Mathf.Max(0f, shopWeight) + Mathf.Max(0f, treasureWeight) +
-            Mathf.Max(0f, eliteBattleWeight) + Mathf.Max(0f, campWeight);
+            eligibleEliteWeight + Mathf.Max(0f, campWeight);
         if (total <= 0f)
             return NodeType.Battle;
 
@@ -206,7 +208,7 @@ public class MapGenerator : MonoBehaviour
         roll -= Mathf.Max(0f, treasureWeight);
         if (roll < Mathf.Max(0f, shopWeight)) return NodeType.Shop;
         roll -= Mathf.Max(0f, shopWeight);
-        if (roll < Mathf.Max(0f, eliteBattleWeight)) return NodeType.EliteBattle;
+        if (roll < eligibleEliteWeight) return NodeType.EliteBattle;
         return NodeType.Camp;
     }
 

@@ -1,6 +1,6 @@
 # 蓝色大肥鱼战斗验收
 
-蓝色大肥鱼使用 `Assets/Resources/Enemies/RiceKeeper.prefab`，战斗素材是独立的透明底待机图和攻击图，位于 `Assets/Art/Roguelike/Enemies/RiceKeeper/`。艰难战斗复用正式的 `CombatController`、手牌、伤害、敌方回合和奖励流程。
+蓝色大肥鱼使用 `Assets/Resources/Enemies/RiceKeeper.prefab`，战斗素材是独立的透明底待机图 `Idle.png` 和修正手臂解剖的攻击图 `AttackAnatomyV2.png`，位于 `Assets/Art/Roguelike/Enemies/RiceKeeper/`。旧版 `Attack.png` 保留作美术对照。艰难战斗复用正式的 `CombatController`、手牌、伤害、敌方回合和奖励流程。
 
 事件战斗沿用原来的对面布局：主角保持场景中的原始位置，大肥鱼使用普通战斗的敌人站位。手牌保留原来的展开宽度与悬停放大效果，选中卡牌时允许临时遮挡人物。
 

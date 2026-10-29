@@ -4,6 +4,14 @@ using TMPro;
 
 public class RulesDisplay : MonoBehaviour
 {
+    private const string CombatRules = @"== 战斗与旅途 ==
+开战 6 能量、抽 5 张牌；第二回合回复 2 能量，第 3–4 回合回复 3，第 5 回合起回复 4。
+每回合抽 2 张牌，手牌保留，上限 10。基础攻击消耗 1 能量并结束回合。
+敌人意图在行动前显示：攻击造成所示伤害，防守获得护盾，重击为 1.5 倍基础攻击（显示值已计算虚弱与烧伤）。
+冻结、眩晕、束缚或沉默会取消敌人当前行动。普通敌人按攻击、攻击、防守循环；精英按攻击、防守、重击；领袖按攻击、防守、重击、攻击。
+前两层不会出现精英；领袖前所有路线均有营地。米饭事件的蓝色大肥鱼每回合攻击。
+
+";
     [Header("UI References")]
     public GameObject rulesPanel;
     public TextMeshProUGUI contentText; // Optional: If you want to set text dynamically
@@ -65,7 +73,7 @@ public class RulesDisplay : MonoBehaviour
             textObject.transform.SetParent(content, false);
             TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
             if (TMP_Settings.defaultFontAsset != null) text.font = TMP_Settings.defaultFontAsset;
-            text.text = rulesContent;
+            text.text = CombatRules + rulesContent;
             text.fontSize = 20f;
             text.enableWordWrapping = true;
             text.color = Color.white;
@@ -89,11 +97,11 @@ public class RulesDisplay : MonoBehaviour
     {
         if (contentText != null)
         {
-            contentText.text = rulesContent;
+            contentText.text = CombatRules + rulesContent;
         }
         else if (standardText != null)
         {
-            standardText.text = rulesContent;
+            standardText.text = CombatRules + rulesContent;
         }
     }
 }

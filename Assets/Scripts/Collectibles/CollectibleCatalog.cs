@@ -22,8 +22,8 @@ public static class CollectibleCatalog
             case "verdant_ring": return Create(id, "青藤戒指", "每回合第一张自然卡牌费用 -1。", CollectibleEffectType.FirstElementCardCostReduction, 1, 125, "life_specimen", DamageType.Physical, CardElement.Nature);
             case "warding_coin": return Create(id, "守望硬币", "每场战斗第 2、4、6…回合获得 5 点护盾。", CollectibleEffectType.EverySecondTurnShield, 5, 70, "old_wallet");
             case "mana_prism": return Create(id, "法力棱镜", "能量上限 +2，并获得 2 点当前能量；每场战斗第二回合额外回复 2 点能量。", CollectibleEffectType.MaxMana, 2, 210, "energy_core", secondTurnMana: 2);
-            case "special_metal_basin": return Create(id, "特殊的金属盆", "每次受到伤害时，有 30% 概率减免 5 点伤害。", CollectibleEffectType.ChanceDamageReduction, 5, 180, "", procChance: 0.3f, eventExclusive: true);
-            case "big_rice": return Create(id, "大米饭", "每场战斗的前三回合，每回合恢复 10 点生命和 1 点能量。", CollectibleEffectType.EarlyBattleRecovery, 10, 180, "", turnMana: 1, durationTurns: 3, eventExclusive: true);
+            case "special_metal_basin": return Create(id, "特殊的金属盆", "每次受到伤害时，有 30% 概率减免 5 点伤害。", CollectibleEffectType.ChanceDamageReduction, 5, 180, "special_metal_basin", procChance: 0.3f, eventExclusive: true);
+            case "big_rice": return Create(id, "大米饭", "每场战斗的前三回合，每回合恢复 10 点生命和 1 点能量。", CollectibleEffectType.EarlyBattleRecovery, 10, 180, "big_rice", turnMana: 1, durationTurns: 3, eventExclusive: true);
             default: return null;
         }
     }

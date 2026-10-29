@@ -60,7 +60,7 @@ foreach ($pair in @(@('BattleContent', 'DuskScavenger'), @('EliteBattleContent',
         $encounter -notmatch 'cardsPerTurn: 2') { throw "Encounter content binding failed: $($pair[0])" }
 }
 $riceEnemy = Read-Asset 'Assets/Resources/Enemies/RiceKeeper.prefab'
-foreach ($pose in @('Idle', 'Attack')) {
+foreach ($pose in @('Idle', 'AttackAnatomyV2')) {
     $poseGuid = Read-Guid "Assets/Art/Roguelike/Enemies/RiceKeeper/$pose.png"
     if ($riceEnemy -notmatch "guid: $poseGuid, type: 3") { throw "RiceKeeper pose not bound: $pose" }
 }
