@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 public class CombatController : NodeContentController
 {
@@ -17,14 +18,13 @@ public class CombatController : NodeContentController
     [Header("Enemy Spawning")]
     public Transform enemyContainer;
     public GameObject enemyPrefab;
-    public int normalEnemyCount = 2;
-    public int eliteEnemyCount = 3;
+    public EncounterBalance encounterBalance;
     public bool isEliteBattle;
     public bool isBossBattle;
 
     [Header("Rewards")]
-    public int battleGoldReward = 15;
-    public int eliteGoldReward = 35;
+    [FormerlySerializedAs("eliteGoldReward")]
+    public int eventGoldReward = 35;
     public bool showCardRewardOnVictory = true;
 
     [Header("UI")]
@@ -40,6 +40,10 @@ public class CombatController : NodeContentController
     private bool resolvingTurn;
     private bool rewardShown;
     private int displayedCollectibleCount = -1;
+    private EncounterTier encounterTier;
+    private int encounterDepth;
+    private int finalDepth;
+    public int GoldReward { get; private set; }
     public bool AcceptsPlayerActions => combatActive && !resolvingTurn && !rewardShown;
     public EventCombatEncounter EventEncounter { get; private set; }
 
@@ -57,7 +61,6 @@ public class CombatController : NodeContentController
 
         EventEncounter = encounter;
         enemyPrefab = challenger;
-        eliteEnemyCount = 1;
         isEliteBattle = true;
         isBossBattle = false;
         return true;
@@ -115,6 +118,11 @@ public class CombatController : NodeContentController
         combatActive = true;
         resolvingTurn = false;
         rewardShown = false;
+        MapGenerator map = FindObjectOfType<MapGenerator>();
+        finalDepth = map != null ? map.totalDepth : 10;
+        encounterDepth = BoundNode != null ? BoundNode.depth : 1;
+        encounterTier = EncounterBalance.GetTier(encounterBalance, isEliteBattle, isBossBattle);
+        GoldReward = EventEncounter != null ? eventGoldReward : encounterTier.Evaluate(encounterDepth, finalDepth).Gold;
 
         if (EnemyManager.Instance != null)
             EnemyManager.Instance.ClearNulls();
@@ -236,7 +244,7 @@ public class CombatController : NodeContentController
         foreach (Enemy enemy in new List<Enemy>(EnemyManager.Instance.ActiveEnemies))
         {
             if (enemy != null && !enemy.IsDead())
-                enemy.AttackPlayer();
+                enemy.TakeTurn();
         }
     }
 
@@ -282,7 +290,7 @@ public class CombatController : NodeContentController
         if (!showCardRewardOnVictory) return false;
         if (DeckManager.Instance == null) return false;
 
-        int goldReward = isEliteBattle ? eliteGoldReward : battleGoldReward;
+        int goldReward = GoldReward;
         if (PlayerStats.Instance != null)
             PlayerStats.Instance.GainGold(goldReward);
 
@@ -316,8 +324,7 @@ public class CombatController : NodeContentController
 
     private void SpawnDefaultEnemies()
     {
-        int count = EventEncounter != null ? 1 :
-            (isBossBattle ? 1 : (isEliteBattle ? eliteEnemyCount : normalEnemyCount));
+        int count = EventEncounter != null ? 1 : encounterTier.Evaluate(encounterDepth, finalDepth).Count;
         if (enemyPrefab == null)
             enemyPrefab = Resources.Load<GameObject>("Enemies/" +
                 (isBossBattle ? "EclipseArchivist" : (isEliteBattle ? "CopperplumeDuelist" : "DuskScavenger")));
@@ -421,7 +428,7 @@ public class CombatController : NodeContentController
         hpText.rectTransform.anchoredPosition = Vector2.zero;
 
         enemy.hpText = hpText;
-        hpText.text = $"{enemy.enemyName}\n生命 {enemy.currentHealth}/{enemy.maxHealth}  护盾 {enemy.currentShield}\n意图：攻击 {enemy.GetAttackDamage()}";
+        hpText.text = $"{enemy.enemyName}\n生命 {enemy.currentHealth}/{enemy.maxHealth}  护盾 {enemy.currentShield}\n{enemy.GetIntentDescription()}";
     }
 
     private void ConfigureEnemy(Enemy enemy, int index)
@@ -432,13 +439,17 @@ public class CombatController : NodeContentController
             enemy.maxHealth = EventEncounter.maxHealth;
             enemy.baseAttack = EventEncounter.attackDamage;
             enemy.currentShield = EventEncounter.initialShield;
+            enemy.ConfigureTurns(EnemyTurnPattern.AttackOnly, 0);
         }
         else
         {
             if (string.IsNullOrEmpty(enemy.enemyName) || enemy.enemyName == "Enemy")
                 enemy.enemyName = isBossBattle ? "终途领袖" : (isEliteBattle ? $"精英敌人 {index + 1}" : $"敌人 {index + 1}");
-            enemy.maxHealth = isBossBattle ? 320 : (isEliteBattle ? 120 + index * 20 : 70 + index * 15);
-            enemy.baseAttack = isBossBattle ? 26 : (isEliteBattle ? 18 + index * 3 : 10 + index * 2);
+            EncounterStats stats = encounterTier.Evaluate(encounterDepth, finalDepth, index);
+            enemy.maxHealth = stats.Health;
+            enemy.baseAttack = stats.Attack;
+            enemy.currentShield = 0;
+            enemy.ConfigureTurns(stats.Pattern, stats.Guard, index);
         }
         enemy.currentHealth = enemy.maxHealth;
 

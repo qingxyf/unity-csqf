@@ -62,7 +62,8 @@ def main():
         folder = art_root / name
         folder.mkdir(parents=True, exist_ok=True)
         meta(folder, True)
-        idle, attack = folder / "Idle.png", folder / "Attack.png"
+        idle = folder / "Idle.png"
+        attack = folder / ("AttackAnatomyV2.png" if name == "RiceKeeper" else "Attack.png")
         with Image.open(idle) as image:
             assert image.mode == "RGBA", f"{idle} needs true alpha"
             # Generated transparency may contain almost invisible edge pixels.

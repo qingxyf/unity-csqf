@@ -329,8 +329,9 @@ public class NonAssetRuntimeTests
         Assert.That(bossCombat.showCardRewardOnVictory, Is.False);
         Assert.That(EnemyManager.Instance.ActiveEnemies.Count, Is.EqualTo(1));
         Enemy bossEnemy = EnemyManager.Instance.ActiveEnemies[0];
-        Assert.That(bossEnemy.maxHealth, Is.EqualTo(320));
-        Assert.That(bossEnemy.baseAttack, Is.EqualTo(26));
+        Assert.That(bossEnemy.maxHealth, Is.EqualTo(280));
+        Assert.That(bossEnemy.baseAttack, Is.EqualTo(22));
+        Assert.That(bossEnemy.CurrentIntent, Is.EqualTo(EnemyIntentKind.Attack));
 
         bossCombat.CompleteCombat();
 

@@ -20,6 +20,65 @@ public class Enemy : MonoBehaviour, IDamageable
     private bool healthInitialized;
     private bool dying;
     private RoguelikeEnemyPresentation presentation;
+    private EnemyTurnPattern turnPattern;
+    private int turnIndex;
+    private int guardAmount;
+
+    public EnemyIntentKind CurrentIntent
+    {
+        get
+        {
+            switch (turnPattern)
+            {
+                case EnemyTurnPattern.Skirmisher:
+                    return turnIndex % 3 == 2 ? EnemyIntentKind.Guard : EnemyIntentKind.Attack;
+                case EnemyTurnPattern.Duelist:
+                    return turnIndex % 3 == 1 ? EnemyIntentKind.Guard :
+                        turnIndex % 3 == 2 ? EnemyIntentKind.HeavyAttack : EnemyIntentKind.Attack;
+                case EnemyTurnPattern.Leader:
+                    return turnIndex % 4 == 1 ? EnemyIntentKind.Guard :
+                        turnIndex % 4 == 2 ? EnemyIntentKind.HeavyAttack : EnemyIntentKind.Attack;
+                default: return EnemyIntentKind.Attack;
+            }
+        }
+    }
+
+    public void ConfigureTurns(EnemyTurnPattern pattern, int guard, int offset = 0)
+    {
+        turnPattern = pattern;
+        guardAmount = Mathf.Max(0, guard);
+        turnIndex = Mathf.Max(0, offset);
+        UpdateUI();
+    }
+
+    public int GetIntentValue()
+    {
+        if (!CanAct()) return 0;
+        if (CurrentIntent == EnemyIntentKind.Guard) return guardAmount;
+        return ModifyAttackDamage(CurrentIntent == EnemyIntentKind.HeavyAttack
+            ? Mathf.CeilToInt(baseAttack * 1.5f) : baseAttack);
+    }
+
+    public string GetIntentDescription()
+    {
+        if (!CanAct()) return "意图：无法行动";
+        string action = CurrentIntent == EnemyIntentKind.Guard ? "防守 +" :
+            CurrentIntent == EnemyIntentKind.HeavyAttack ? "重击 " : "攻击 ";
+        return $"意图：{action}{GetIntentValue()}" + (CurrentIntent == EnemyIntentKind.Guard ? " 护盾" : "");
+    }
+
+    /// <summary>Consume the advertised intent once; crowd control cancels this turn's action.</summary>
+    public void TakeTurn()
+    {
+        if (IsDead()) return;
+        if (CanAct())
+        {
+            if (CurrentIntent == EnemyIntentKind.Guard) AddShield(guardAmount);
+            else DealAttack(GetIntentValue());
+        }
+        turnIndex++;
+        UpdateUI();
+    }
 
     private void Awake()
     {
@@ -204,6 +263,7 @@ public class Enemy : MonoBehaviour, IDamageable
 
         ShowFloatingText(type.ToString(), Color.yellow);
         Debug.Log($"{enemyName} applied {type} for {duration} turns.");
+        UpdateUI();
     }
 
     public void ProcessTurnStart()
@@ -235,8 +295,11 @@ public class Enemy : MonoBehaviour, IDamageable
     public void AttackPlayer()
     {
         if (!CanAct()) return;
+        DealAttack(GetAttackDamage());
+    }
 
-        int dmg = GetAttackDamage();
+    private void DealAttack(int dmg)
+    {
 
         if (HasStatus(StatusType.Confused))
         {
@@ -302,6 +365,7 @@ public class Enemy : MonoBehaviour, IDamageable
     public void RemoveStatus(StatusType type)
     {
         RemoveEffect(type);
+        UpdateUI();
     }
 
     public void ExtendStatus(StatusType type, int turns)
@@ -331,7 +395,11 @@ public class Enemy : MonoBehaviour, IDamageable
 
     public int GetAttackDamage()
     {
-        int dmg = baseAttack;
+        return ModifyAttackDamage(baseAttack);
+    }
+
+    private int ModifyAttackDamage(int dmg)
+    {
 
         if (HasStatus(StatusType.Weak))
         {
@@ -401,7 +469,7 @@ public class Enemy : MonoBehaviour, IDamageable
         if (hpText != null)
         {
             hpText.text = $"{enemyName}\n生命 {currentHealth}/{maxHealth}  护盾 {currentShield}\n" +
-                (CanAct() ? $"意图：攻击 {GetAttackDamage()}" : "意图：无法行动");
+                GetIntentDescription();
         }
     }
 

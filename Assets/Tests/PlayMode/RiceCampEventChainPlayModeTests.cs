@@ -325,7 +325,8 @@ public class RiceCampEventChainPlayModeTests
             Assert.That(CollectibleManager.OwnedCollectibles.Count, Is.EqualTo(1));
             Assert.That(CollectibleManager.OwnedCollectibles[0].eventExclusive, Is.False);
             Assert.That(CollectibleManager.PendingShopCollectibleId, Is.Null);
-            Assert.That(PlayerStats.Instance.gold, Is.EqualTo(gold + (type == NodeType.Battle ? 15 : 35)));
+            // This helper binds a depth-0 node, which uses the opening curve endpoint.
+            Assert.That(PlayerStats.Instance.gold, Is.EqualTo(gold + (type == NodeType.Battle ? 20 : 40)));
             RewardChoiceUI reward = combat.GetComponentInChildren<RewardChoiceUI>();
             Assert.That(reward.title, Does.Contain(CollectibleManager.OwnedCollectibles[0].collectibleName));
             reward.skipButton.onClick.Invoke();
